@@ -55,6 +55,9 @@ class MemoryManager {
 
     } mIORegisters;
     */
+
+    uint8_t VRAM[8192];
+    uint8_t IRAM[8192];
 public:
     uint8_t readByte(uint16_t pAddr);
     uint16_t readWord(uint16_t pAddr);

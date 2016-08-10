@@ -275,17 +275,17 @@ void CPU::tick() {
             break;
 
         case 0xF2:
-            mGPRegisters.A = mMemory.readByte(0xFF00 + mGPRegisters.C);
+            mGPRegisters.A = mMemory.readByte((uint16_t) (0xFF00 + mGPRegisters.C));
             break;
         case 0xE2:
-            mMemory.writeByte(0xFF00 + mGPRegisters.C, mGPRegisters.A);
+            mMemory.writeByte((uint16_t) (0xFF00 + mGPRegisters.C), mGPRegisters.A);
             break;
 
         case 0xE0:
-            mMemory.writeByte(0xFF00 + mMemory.readByte(++mMainRegisters.PC), mGPRegisters.A);
+            mMemory.writeByte((uint16_t) (0xFF00 + mMemory.readByte(++mMainRegisters.PC)), mGPRegisters.A);
             break;
         case 0xF0:
-            mGPRegisters.A = mMemory.readByte(0xFF00 + mMemory.readByte(++mMainRegisters.PC));
+            mGPRegisters.A = mMemory.readByte((uint16_t) (0xFF00 + mMemory.readByte(++mMainRegisters.PC)));
             break;
 
         case 0x3A:
@@ -718,28 +718,26 @@ void CPU::tick() {
             break;
             /* ADD SP, n */
             //FIXME: not sure if ok
-        case 0xE8:
+        case 0xE8: {
+
             int el_a = mMainRegisters.SP;
             int n = (int) (mMemory.readByte(++mMainRegisters.PC));
             mMainRegisters.SP += n;
             uint8_t carry = (uint8_t) (((el_a + n) > 65535 || (el_a + n) < 0) ? 1 : 0);
             uint8_t half = (uint8_t) (((mMainRegisters.SP ^ el_a ^ n) & 0x0400) >> 10);
             mMainRegisters.FLAG = FLAGS(0, 0, carry, half);
+        }
             break;
 
-#define INC_16_R(reg) ({ reg++; })
+#define INC_16_R(reg) { reg++; }
 
-        case 0x03:
-            INC_16_R(mGPRegisters.BC);
+        case 0x03: INC_16_R(mGPRegisters.BC);
             break;
-        case 0x13:
-            INC_16_R(mGPRegisters.DE);
+        case 0x13: INC_16_R(mGPRegisters.DE);
             break;
-        case 0x23:
-            INC_16_R(mGPRegisters.HL);
+        case 0x23: INC_16_R(mGPRegisters.HL);
             break;
-        case 0x33:
-            INC_16_R(mMainRegisters.SP);
+        case 0x33: INC_16_R(mMainRegisters.SP);
             break;
 
 #define DEC_16_R(reg) ({ reg--; })
@@ -758,9 +756,9 @@ void CPU::tick() {
             break;
 
             /* DDA */
-        case 0x27:
+        case 0x27: {
             uint8_t reg = mGPRegisters.A;
-            if (F_HALF(mMainRegisters.FLAG) || reg & 0x0F > 9)
+            if (F_HALF(mMainRegisters.FLAG) || (reg & 0x0F) > 9)
                 mGPRegisters.A += 6;
             mMainRegisters.FLAG &= 0xEF; //reset carry flag
             if (F_HALF(mMainRegisters.FLAG) || reg > 0x99) {
@@ -769,6 +767,7 @@ void CPU::tick() {
             }
             mMainRegisters.FLAG = FLAGS((mGPRegisters.A == 0 ? 1 : 0), F_SUB(mMainRegisters.FLAG), 0,
                                         F_CARRY(mMainRegisters.FLAG));
+        }
             break;
         case 0x2F:
             mGPRegisters.A = ~mGPRegisters.A;
@@ -802,8 +801,6 @@ void CPU::tick() {
         case 0xFB:
             mMainRegisters.IE = 1;
             break;
-
-            //TODO: ROTATIONS
 
 
             /* JMP */
@@ -1001,21 +998,239 @@ void CPU::tick() {
             RST(0x0038);
             break;
 
-
-            //TODO: BITS
-        case 0xCB:
-            uint8_t bitOP = mMemory.readByte(++mMainRegisters.PC);
-            switch (bitOP) {
-#define SWAP_R(reg)({\
-            reg = ((reg & 0x0F) << 4) | ((reg & 0xF0) >> 4);\
-            mMainRegisters.FLAG = FLAGS((reg == 0 ? 1 : 0),0,0,0)\
+#define RLC_R(reg) ({\
+            uint8_t c = (uint8_t) (((reg) & 0x80) >> 7);\
+            (reg) <<= 1;\
+            (reg) |= c;\
+            mMainRegisters.FLAG = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
     })
+
+#define RL_R(reg) ({\
+            uint8_t c = (uint8_t) (((reg) & 0x80) >> 7);\
+            (reg) <<= 1;\
+            (reg) |= F_CARRY(mMainRegisters.FLAG);\
+            mMainRegisters.FLAG = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
+    })
+
+#define RRC_R(reg) ({\
+            uint8_t c = (uint8_t) ((reg) & 0x01);\
+            (reg) >>= 1;\
+            (reg) |= (c << 7);\
+            mMainRegisters.FLAG = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
+    })
+
+#define RR_R(reg) ({\
+            uint8_t c = (uint8_t) ((reg) & 0x01);\
+            (reg) >>= 1;\
+            (reg) |= F_CARRY(mMainRegisters.FLAG);\
+            mMainRegisters.FLAG = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
+    })
+
+#define BIT_R(reg, id) ({\
+            uint8_t zero = (reg >> id) & 0x01;\
+            mMainRegisters.FLAG = FLAGS(zero == 0 ? 1 : 0, 0, 1, F_CARRY(mMainRegisters.FLAG));  \
+    })
+
+#define SET_R(reg, id) ({\
+            reg |= (0x01 << id);\
+    })
+
+#define RES_R(reg, id) ({\
+        reg &= ~(0x01 << id);\
+    })
+
+
+#define SLA_R(reg) ({\
+            uint8_t c = (uint8_t) (((reg) & 0x80) >> 7);\
+            (reg) <<= 1;\
+            mMainRegisters.FLAG = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
+    })
+
+#define SRA_R(reg) ({\
+            uint8_t c = (uint8_t) ((reg) & 0x01);\
+            (reg) >>= 1;\
+            (reg) |= 0x80;\
+            mMainRegisters.FLAG = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
+    })
+
+#define SRL_R(reg) ({\
+            uint8_t c = (uint8_t) ((reg) & 0x01);\
+            (reg) >>= 1;\
+            mMainRegisters.FLAG = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
+    })
+
+
+            /* ROTATIONS */
+        case 0x07:
+            RLC_R(mGPRegisters.A);
+            break;
+
+        case 0x17:
+            RL_R(mGPRegisters.A);
+            break;
+
+        case 0x0F:
+            RRC_R(mGPRegisters.A);
+            break;
+
+        case 0x1F:
+            RR_R(mGPRegisters.A);
+            break;
+
+
+        case 0xCB: {
+            uint8_t bitOP = mMemory.readByte(++mMainRegisters.PC);
+            uint8_t hl = mMemory.readByte(mGPRegisters.HL);
+            uint8_t *target;
+
+            switch (bitOP & 0x0F) {
+                case 0x07:
+                case 0x0F:
+                    target = &mGPRegisters.A;
+                    break;
+                case 0x00:
+                case 0x08:
+                    target = &mGPRegisters.B;
+                    break;
+                case 0x01:
+                case 0x09:
+                    target = &mGPRegisters.C;
+                    break;
+                case 0x02:
+                case 0x0A:
+                    target = &mGPRegisters.D;
+                    break;
+                case 0x03:
+                case 0x0B:
+                    target = &mGPRegisters.E;
+                    break;
+                case 0x04:
+                case 0x0C:
+                    target = &mGPRegisters.H;
+                    break;
+                case 0x05:
+                case 0x0D:
+                    target = &mGPRegisters.L;
+                    break;
+                case 0x06:
+                case 0x0E:
+                    target = &hl;
+                    break;
+                default:
+                    throw "Unsuppeorted bit code";
             }
+
+            switch (OPCode & 0xF8) {
+                case 0x00:
+                    RLC_R(*target);
+                    break;
+                case 0x08:
+                    RRC_R(*target);
+                    break;
+                case 0x10:
+                    RL_R(*target);
+                    break;
+                case 0x18:
+                    RR_R(*target);
+                    break;
+                case 0x20:
+                    SLA_R(*target);
+                    break;
+                case 0x28:
+                    SRA_R(*target);
+                    break;
+                case 0x30:
+                    //SWAP
+                    *target = (uint8_t) (((*target & 0x0F) << 4) | ((*target & 0xF0) >> 4));
+                    mMainRegisters.FLAG = FLAGS((*target == 0 ? 1 : 0), 0, 0, 0);
+                    break;
+                case 0x38:
+                    SRL_R(*target);
+                    break;
+                case 0x40:
+                    BIT_R(*target, 0);
+                    break;
+                case 0x48:
+                    BIT_R(*target, 1);
+                    break;
+                case 0x50:
+                    BIT_R(*target, 2);
+                    break;
+                case 0x58:
+                    BIT_R(*target, 3);
+                    break;
+                case 0x60:
+                    BIT_R(*target, 4);
+                    break;
+                case 0x68:
+                    BIT_R(*target, 5);
+                    break;
+                case 0x70:
+                    BIT_R(*target, 6);
+                    break;
+                case 0x78:
+                    BIT_R(*target, 7);
+                    break;
+                case 0x80:
+                    RES_R(*target, 0);
+                    break;
+                case 0x88:
+                    RES_R(*target, 1);
+                    break;
+                case 0x90:
+                    RES_R(*target, 2);
+                    break;
+                case 0x98:
+                    RES_R(*target, 3);
+                    break;
+                case 0xA0:
+                    RES_R(*target, 4);
+                    break;
+                case 0xA8:
+                    RES_R(*target, 5);
+                    break;
+                case 0xB0:
+                    RES_R(*target, 6);
+                    break;
+                case 0xB8:
+                    RES_R(*target, 7);
+                    break;
+                case 0xC0:
+                    SET_R(*target, 0);
+                    break;
+                case 0xC8:
+                    SET_R(*target, 1);
+                    break;
+                case 0xD0:
+                    SET_R(*target, 2);
+                    break;
+                case 0xD8:
+                    SET_R(*target, 3);
+                    break;
+                case 0xE0:
+                    SET_R(*target, 4);
+                    break;
+                case 0xE8:
+                    SET_R(*target, 5);
+                    break;
+                case 0xF0:
+                    SET_R(*target, 6);
+                    break;
+                case 0xF8:
+                    SET_R(*target, 7);
+                    break;
+                default:
+                    throw "Could not happen";
+
+            }
+            mMemory.writeByte(mGPRegisters.HL, hl);
+        }
             break;
 
         default:
             throw "Unsupported OP code";
     }
-
+    if (!mJump) mMainRegisters.PC++;
+    mJump = 0;
 }
 

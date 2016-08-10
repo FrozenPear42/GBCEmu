@@ -14,6 +14,14 @@ int main() {
             std::cout << "ERROR: " << e << "\n";
             break;
         }
+        catch(const char* e) {
+            std::cout << "ERROR: " << e << "\n";
+            break;
+        }
+        catch(...) {
+            std::cout << "ERROR" << "\n";
+            break;
+        }
         cpu.log();
     }
     return 0;

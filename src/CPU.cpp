@@ -813,7 +813,9 @@ void CPU::tick() {
             uint8_t reg = mGPRegisters.A;
             if (F_HALF(mMainRegisters.FLAG) || (reg & 0x0F) > 9)
                 mGPRegisters.A += 6;
+
             mMainRegisters.FLAG &= 0xEF; //reset carry flag
+
             if (F_HALF(mMainRegisters.FLAG) || reg > 0x99) {
                 mGPRegisters.A += 0x60;
                 mMainRegisters.FLAG |= 0x10; //set carry flag
@@ -914,107 +916,67 @@ void CPU::tick() {
         case 0x38:
             JR_R(F_CARRY(mMainRegisters.FLAG));
             break;
+
+#define CALL_R(cond) ({\
+            uint16_t next = (uint16_t) (mMainRegisters.PC + 3);\
+            mMemory.writeByte(--mMainRegisters.SP, (uint8_t) ((next & 0xFF00) >> 8));\
+            mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));\
+            mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);\
+            mJump = 1;\
+            })
+
             /* CALL */
-        case 0xCD: {
-            uint16_t next = (uint16_t) (mMainRegisters.PC + 3);
-            mMemory.writeByte(--mMainRegisters.SP, (uint8_t) ((next & 0xFF00) >> 8));
-            mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));
-            mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
-            mJump = 1;
-        }
+        case 0xCD:
+            CALL_R(true);
             break;
 
         case 0xC4:
-            if (!F_ZERO(mMainRegisters.FLAG)) {
-                uint16_t next = (uint16_t) (mMainRegisters.PC + 3);
-                mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0xFF00 >> 8));
-                mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));
-                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
-                mJump = 1;
-            }
+            CALL_R(!F_ZERO(mMainRegisters.FLAG));
             break;
 
         case 0xCC:
-            if (F_ZERO(mMainRegisters.FLAG)) {
-                uint16_t next = (uint16_t) (mMainRegisters.PC + 3);
-                mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0xFF00 >> 8));
-                mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));
-                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
-                mJump = 1;
-            }
+            CALL_R(F_ZERO(mMainRegisters.FLAG));
             break;
 
         case 0xD4:
-            if (!F_CARRY(mMainRegisters.FLAG)) {
-                uint16_t next = (uint16_t) (mMainRegisters.PC + 3);
-                mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0xFF00 >> 8));
-                mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));
-                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
-                mJump = 1;
-            }
+            CALL_R(!F_CARRY(mMainRegisters.FLAG));
             break;
 
         case 0xDC:
-            if (F_CARRY(mMainRegisters.FLAG)) {
-                uint16_t next = (uint16_t) (mMainRegisters.PC + 3);
-                mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0xFF00 >> 8));
-                mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));
-                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
-                mJump = 1;
-            }
+            CALL_R(F_CARRY(mMainRegisters.FLAG));
             break;
+
+#define RET_R(cond) ({\
+            if(cond) {\
+                uint16_t next;\
+            next = mMemory.readByte(mMainRegisters.SP++);\
+            next |= mMemory.readByte(mMainRegisters.SP++) << 8;\
+            mMainRegisters.PC = next;\
+            mJump = 1;\
+            }\
+    })
 
             /* RET */
-        case 0xC9: {
-            uint16_t next;
-
-            next = mMemory.readByte(mMainRegisters.SP++);
-            next |= mMemory.readByte(mMainRegisters.SP++) << 8;
-            mMainRegisters.PC = next;
-            mJump = 1;
-        }
+        case 0xC9:
+            RET_R(true);
             break;
-
-        case 0xD9: {
-            uint16_t next = 0;
-            next |= mMemory.readByte(mMainRegisters.SP++) | (mMemory.readByte(mMainRegisters.SP++) << 8);
-            mMainRegisters.PC = next;
-            mJump = 1;
+            /* RETI */
+        case 0xD9:
+            RET_R(true);
             mMainRegisters.IE = 1;
-        }
             break;
 
         case 0xC0:
-            if (!F_ZERO(mMainRegisters.FLAG)) {
-                uint16_t next = 0;
-                next |= mMemory.readByte(mMainRegisters.SP++) | (mMemory.readByte(mMainRegisters.SP++) << 8);
-                mMainRegisters.PC = next;
-                mJump = 1;
-            }
+            RET_R(!F_ZERO(mMainRegisters.FLAG));
             break;
         case 0xC8:
-            if (F_ZERO(mMainRegisters.FLAG)) {
-                uint16_t next = 0;
-                next |= mMemory.readByte(mMainRegisters.SP++) | (mMemory.readByte(mMainRegisters.SP++) << 8);
-                mMainRegisters.PC = next;
-                mJump = 1;
-            }
+            RET_R(F_ZERO(mMainRegisters.FLAG));
             break;
         case 0xD0:
-            if (!F_CARRY(mMainRegisters.FLAG)) {
-                uint16_t next = 0;
-                next |= mMemory.readByte(mMainRegisters.SP++) | (mMemory.readByte(mMainRegisters.SP++) << 8);
-                mMainRegisters.PC = next;
-                mJump = 1;
-            }
+            RET_R(!F_CARRY(mMainRegisters.FLAG));
             break;
         case 0xD8:
-            if (F_CARRY(mMainRegisters.FLAG)) {
-                uint16_t next = 0;
-                next |= mMemory.readByte(mMainRegisters.SP++) | (mMemory.readByte(mMainRegisters.SP++) << 8);
-                mMainRegisters.PC = next;
-                mJump = 1;
-            }
+            RET_R(F_CARRY(mMainRegisters.FLAG));
             break;
 
             /* RST */
@@ -1077,20 +1039,6 @@ void CPU::tick() {
             mMainRegisters.FLAG = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
     })
 
-#define BIT_R(reg, id) ({\
-            uint8_t zero = (reg >> id) & 0x01;\
-            mMainRegisters.FLAG = FLAGS(zero == 0 ? 1 : 0, 0, 1, F_CARRY(mMainRegisters.FLAG));  \
-    })
-
-#define SET_R(reg, id) ({\
-            reg |= (0x01 << id);\
-    })
-
-#define RES_R(reg, id) ({\
-        reg &= ~(0x01 << id);\
-    })
-
-
 #define SLA_R(reg) ({\
             uint8_t c = (uint8_t) (((reg) & 0x80) >> 7);\
             (reg) <<= 1;\
@@ -1110,6 +1058,18 @@ void CPU::tick() {
             mMainRegisters.FLAG = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
     })
 
+#define BIT_R(reg, id) ({\
+            uint8_t zero = (reg >> id) & 0x01;\
+            mMainRegisters.FLAG = FLAGS(zero == 0 ? 1 : 0, 0, 1, F_CARRY(mMainRegisters.FLAG));  \
+    })
+
+#define SET_R(reg, id) ({\
+            reg |= (0x01 << id);\
+    })
+
+#define RES_R(reg, id) ({\
+        reg &= ~(0x01 << id);\
+    })
 
             /* ROTATIONS */
         case 0x07:

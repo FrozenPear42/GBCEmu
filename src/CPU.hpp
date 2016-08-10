@@ -8,6 +8,13 @@
 #include <cstdint>
 #include "MemoryManager.hpp"
 
+#define FLAGS(z, n, h, c) ((uint8_t) ( (z & 0x01) << 7 | (n & 0x01) << 6 | (h & 0x01) << 5 | (c & 0x01) << 4) )
+#define F_ZERO(flags) ((flags >> 7) & 0x01)
+#define F_SUB(flags) ((flags >> 6) & 0x01)
+#define F_HALF(flags) ((flags >> 5) & 0x01)
+#define F_CARRY(flags) ((uint8_t)((flags >> 4) & 0x01))
+
+
 class CPU {
 private:
     /** Struct for CPU registers */

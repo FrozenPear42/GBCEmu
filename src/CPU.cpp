@@ -347,7 +347,195 @@ void CPU::tick() {
 
             /* ALU */
             /* ADD */
-        case 0x87:
+        case 0x87: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mGPRegisters.A;
+            mGPRegisters.A = el_a + el_b;
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b) > 255) ? 1 : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+        case 0x80: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mGPRegisters.B;
+            mGPRegisters.A = el_a + el_b;
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b) > 255) ? 1 : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+        case 0x81: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mGPRegisters.C;
+            mGPRegisters.A = el_a + el_b;
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b) > 255) ? 1 : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+        case 0x82: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mGPRegisters.D;
+            mGPRegisters.A = el_a + el_b;
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b) > 255) ? 1 : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+        case 0x83: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mGPRegisters.E;
+            mGPRegisters.A = el_a + el_b;
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b) > 255) ? 1 : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+        case 0x84: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mGPRegisters.H;
+            mGPRegisters.A = el_a + el_b;
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b) > 255) ? 1 : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+        case 0x85: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mGPRegisters.L;
+            mGPRegisters.A = el_a + el_b;
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b) > 255) ? 1 : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+        case 0x86: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mMemory.readByte(mGPRegisters.HL);
+            mGPRegisters.A = el_a + el_b;
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b) > 255) ? 1 : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+        case 0xC6: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mMemory.readByte(++mMainRegisters.PC);
+            mGPRegisters.A = el_a + el_b;
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b) > 255) ? 1 : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+
+            /* ADD with carry */
+        case 0x8F: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mGPRegisters.A;
+            mGPRegisters.A = el_a + el_b + F_CARRY(mMainRegisters.FLAG);
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b + F_CARRY(mMainRegisters.FLAG)) > 255) ? 1
+                                                                                                                  : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+        case 0x88: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mGPRegisters.B;
+            mGPRegisters.A = el_a + el_b + F_CARRY(mMainRegisters.FLAG);
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b + F_CARRY(mMainRegisters.FLAG)) > 255) ? 1
+                                                                                                                  : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+        case 0x89: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mGPRegisters.C;
+            mGPRegisters.A = el_a + el_b + F_CARRY(mMainRegisters.FLAG);
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b + F_CARRY(mMainRegisters.FLAG)) > 255) ? 1
+                                                                                                                  : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+        case 0x8A: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mGPRegisters.D;
+            mGPRegisters.A = el_a + el_b + F_CARRY(mMainRegisters.FLAG);
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b + F_CARRY(mMainRegisters.FLAG)) > 255) ? 1
+                                                                                                                  : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+        case 0x8B: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mGPRegisters.E;
+            mGPRegisters.A = el_a + el_b + F_CARRY(mMainRegisters.FLAG);
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b + F_CARRY(mMainRegisters.FLAG)) > 255) ? 1
+                                                                                                                  : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+        case 0x8C: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mGPRegisters.H;
+            mGPRegisters.A = el_a + el_b;
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b) > 255) ? 1 : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+        case 0x8D: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mGPRegisters.L;
+            mGPRegisters.A = el_a + el_b + F_CARRY(mMainRegisters.FLAG);
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b + F_CARRY(mMainRegisters.FLAG)) > 255) ? 1
+                                                                                                                  : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+        case 0x8E: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mMemory.readByte(mGPRegisters.HL);
+            mGPRegisters.A = el_a + el_b + F_CARRY(mMainRegisters.FLAG);
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b + F_CARRY(mMainRegisters.FLAG)) > 255) ? 1
+                                                                                                                  : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
+            break;
+        case 0xCE: {
+            uint8_t el_a = mGPRegisters.A;
+            uint8_t el_b = mMemory.readByte(++mMainRegisters.PC);
+            mGPRegisters.A = el_a + el_b + F_CARRY(mMainRegisters.FLAG);
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b + F_CARRY(mMainRegisters.FLAG)) > 255) ? 1
+                                                                                                                  : 0);
+            uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);
+        }
             break;
 
         default:

@@ -76,15 +76,20 @@ class MemoryManager {
             0xF5, 0x06, 0x19, 0x78, 0x86, 0x23, 0x05, 0x20, 0xFB, 0x86, 0x20, 0xFE, 0x3E, 0x01, 0xE0, 0x50
     };
 
+/*
+    uint8_t mBIOS[17] = {
+            0x00, 0x31, 0xFE, 0xFF, 0x21, 0x04, 0x01, 0x00, 0x7C, 0x00, 0x00
+    };
+*/
     Cartridge mCartridge;
     bool mStartup = true;
 
-    uint8_t mVRAM[0x2000];
-    uint8_t mIRAM[0x2000];
-    uint8_t mORAM[0xA0];
-    uint8_t mIO[0x4C];
-    uint8_t mZRAM[0x80];
-    uint8_t mInterruptFlags;
+    uint8_t mVRAM[0x2000] = {0};
+    uint8_t mIRAM[0x2000] = {0};
+    uint8_t mORAM[0xA0] = {0};
+    uint8_t mIO[0x4C] = {0};
+    uint8_t mZRAM[0x80] = {0};
+    uint8_t mInterruptFlags = 0;
 
 public:
     uint8_t readByte(uint16_t pAddr);

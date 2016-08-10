@@ -5,14 +5,16 @@
 #include "MemoryManager.hpp"
 
 uint8_t MemoryManager::readByte(uint16_t pAddr) {
+
+    if (mStartup && pAddr <= 0x00FF)
+        return mBIOS[pAddr];
+
     switch (pAddr & 0xF000) {
         /* ROM0 */
         case 0x0000:
         case 0x1000:
         case 0x2000:
         case 0x3000:
-            if (mStartup)
-                return mBIOS[pAddr];
             /* ROM switchable */
         case 0x4000:
         case 0x5000:
@@ -61,7 +63,7 @@ uint8_t MemoryManager::readByte(uint16_t pAddr) {
                     /* I/O, Zero Page, Interrupts */
                 case 0x0F00:
                     if (pAddr == 0xFFFF) return mInterruptFlags;
-                    if (pAddr >= 0xFF80) return mZRAM[pAddr & 0x007F];
+                    else if (pAddr >= 0xFF80) return mZRAM[pAddr & 0x007F];
                     else return mIO[pAddr & 0x00FF];
             }
             break;

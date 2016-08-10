@@ -15,7 +15,7 @@ CPU::CPU() {
 void CPU::tick() {
     uint8_t OPCode;
     OPCode = mMemory.readByte(mMainRegisters.PC);
-    std::cout << "PC: "<< mMainRegisters.PC << " OPCODE: " << std::hex << (unsigned)OPCode << "\n";
+    std::cout << std::hex << "PC: " << mMainRegisters.PC << " OPCODE: " << (unsigned) OPCode << "\n";
     switch (OPCode) {
         /* NOP */
         case 0x00:
@@ -311,7 +311,8 @@ void CPU::tick() {
             break;
 
         case 0xF8:
-            mGPRegisters.HL = mMainRegisters.SP + mMemory.readByte(++mMainRegisters.PC);
+            mGPRegisters.HL = (uint16_t) ((int) mMainRegisters.SP +
+                                          (signed char) mMemory.readByte(++mMainRegisters.PC));
             break;
         case 0xF9:
             mMainRegisters.SP = mGPRegisters.HL;
@@ -437,6 +438,45 @@ void CPU::tick() {
             ADC_R(mMemory.readByte(++mMainRegisters.PC));
             break;
 
+#define SUB_R(reg) (\
+            {\
+            uint8_t el_a = mGPRegisters.A;\
+            uint8_t el_b = reg;\
+            uint8_t res = el_a - el_b;\
+            uint8_t zero = (uint8_t) (res == 0 ? 1 : 0);\
+            uint8_t carry = (uint8_t) (((int) el_a + (int) el_b < 0) ? 1 : 0);\
+            uint8_t half = (uint8_t) (((res ^ el_a ^ el_b) & 0x10) >> 4);\
+            mGPRegisters.A = res;\
+            mMainRegisters.FLAG = FLAGS(zero, 1, carry, half);\
+    })
+        case 0x97:
+            SUB_R(mGPRegisters.A);
+            break;
+        case 0x90:
+            SUB_R(mGPRegisters.B);
+            break;
+        case 0x91:
+            SUB_R(mGPRegisters.C);
+            break;
+        case 0x92:
+            SUB_R(mGPRegisters.D);
+            break;
+        case 0x93:
+            SUB_R(mGPRegisters.E);
+            break;
+        case 0x94:
+            SUB_R(mGPRegisters.H);
+            break;
+        case 0x95:
+            SUB_R(mGPRegisters.L);
+            break;
+        case 0x96:
+            SUB_R(mMemory.readByte(mGPRegisters.HL));
+            break;
+        case 0xD6:
+            SUB_R(mMemory.readByte(++mMainRegisters.PC));
+            break;
+
             /* CP */
 #define CP_R(reg) (\
             {\
@@ -460,18 +500,22 @@ void CPU::tick() {
         case 0xBA:
             CP_R(mGPRegisters.D);
             break;
-        case 0xBC:
+        case 0xBB:
             CP_R(mGPRegisters.E);
             break;
-        case 0xBD:
+        case 0xBC:
             CP_R(mGPRegisters.H);
             break;
-        case 0xBE:
+        case 0xBD:
             CP_R(mGPRegisters.L);
             break;
-        case 0xFE:
+        case 0xBE:
             CP_R(mMemory.readByte(mGPRegisters.HL));
             break;
+        case 0xFE:
+            CP_R(mMemory.readByte(++mMainRegisters.PC));
+            break;
+
             /* SBC */
 #define SBC_R(reg) (\
             {\
@@ -510,6 +554,7 @@ void CPU::tick() {
         case 0xDE:
             SBC_R(mMemory.readByte(++mMainRegisters.PC));
             break;
+
             /* AND */
 #define AND_R(reg) (\
             {\
@@ -730,7 +775,7 @@ void CPU::tick() {
 
             int el_a = mMainRegisters.SP;
             int n = (int) (mMemory.readByte(++mMainRegisters.PC));
-            mMainRegisters.SP += n;
+            mMainRegisters.SP = (uint16_t) ((int) mMainRegisters.SP + n);
             uint8_t carry = (uint8_t) (((el_a + n) > 65535 || (el_a + n) < 0) ? 1 : 0);
             uint8_t half = (uint8_t) (((mMainRegisters.SP ^ el_a ^ n) & 0x0400) >> 10);
             mMainRegisters.FLAG = FLAGS(0, 0, carry, half);
@@ -811,72 +856,68 @@ void CPU::tick() {
             break;
 
 
+#define JMP_R(cond) ({\
+            if (cond) {\
+                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);\
+                mJump = 1;\
+            }else{\
+                ++mMainRegisters.PC;\
+                ++mMainRegisters.PC;\
+            }       \
+    })
             /* JMP */
         case 0xC3:
-            mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
-            mJump = 1;
+            JMP_R(true);
             break;
         case 0xC2:
-            if (!F_ZERO(mMainRegisters.FLAG)) {
-                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
-                mJump = 1;
-            }
+            JMP_R(!F_ZERO(mMainRegisters.FLAG));
             break;
         case 0xCA:
-            if (F_ZERO(mMainRegisters.FLAG)) {
-                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
-                mJump = 1;
-            }
+            JMP_R(F_ZERO(mMainRegisters.FLAG));
             break;
         case 0xD2:
-            if (!F_CARRY(mMainRegisters.FLAG)) {
-                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
-                mJump = 1;
-            }
+            JMP_R(!F_CARRY(mMainRegisters.FLAG));
             break;
         case 0xDA:
-            if (F_CARRY(mMainRegisters.FLAG)) {
-                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
-                mJump = 1;
-            }
+            JMP_R(F_CARRY(mMainRegisters.FLAG));
             break;
         case 0xE9:
             mMainRegisters.PC = mGPRegisters.HL;
             mJump = 1;
             break;
+
             /* JR */
-        case 0x18:
-            mMainRegisters.PC += mMemory.readByte(++mMainRegisters.PC);
-            mJump = 1;
+#define JR_R(cond)({\
+            if(cond){\
+                int8_t offset = (int8_t) mMemory.readByte(++mMainRegisters.PC);\
+                mMainRegisters.PC = (uint16_t) ((int16_t) mMainRegisters.PC + offset);\
+                mMainRegisters.PC++;\
+                mJump = 1;\
+            } else {\
+                ++mMainRegisters.PC;\
+            }\
+            })
+
+        case 0x18: {
+            JR_R(true);
+        }
             break;
         case 0x20:
-            if (!F_ZERO(mMainRegisters.FLAG)) {
-                mMainRegisters.PC += mMemory.readByte(++mMainRegisters.PC);
-                mJump = 1;
-            }
+            JR_R(!F_ZERO(mMainRegisters.FLAG));
             break;
         case 0x28:
-            if (F_ZERO(mMainRegisters.FLAG)) {
-                mMainRegisters.PC += mMemory.readByte(++mMainRegisters.PC);
-                mJump = 1;
-            }
+            JR_R(F_ZERO(mMainRegisters.FLAG));
             break;
         case 0x30:
-            if (!F_CARRY(mMainRegisters.FLAG)) {
-                mMainRegisters.PC += mMemory.readByte(++mMainRegisters.PC);
-                mJump = 1;
-            }
+            JR_R(!F_CARRY(mMainRegisters.FLAG));
             break;
         case 0x38:
-            if (F_CARRY(mMainRegisters.FLAG)) {
-                mMainRegisters.PC += mMemory.readByte(++mMainRegisters.PC);
-                mJump = 1;
-            }
+            JR_R(F_CARRY(mMainRegisters.FLAG));
             break;
             /* CALL */
         case 0xCD: {
-            uint16_t next = (uint16_t) (mMainRegisters.PC + 1);
-            mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0xFF00 >> 8));
+            uint16_t next = (uint16_t) (mMainRegisters.PC + 3);
+            mMemory.writeByte(--mMainRegisters.SP, (uint8_t) ((next & 0xFF00) >> 8));
             mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));
             mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
             mJump = 1;
@@ -885,7 +926,7 @@ void CPU::tick() {
 
         case 0xC4:
             if (!F_ZERO(mMainRegisters.FLAG)) {
-                uint16_t next = (uint16_t) (mMainRegisters.PC + 1);
+                uint16_t next = (uint16_t) (mMainRegisters.PC + 3);
                 mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0xFF00 >> 8));
                 mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));
                 mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
@@ -895,7 +936,7 @@ void CPU::tick() {
 
         case 0xCC:
             if (F_ZERO(mMainRegisters.FLAG)) {
-                uint16_t next = (uint16_t) (mMainRegisters.PC + 1);
+                uint16_t next = (uint16_t) (mMainRegisters.PC + 3);
                 mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0xFF00 >> 8));
                 mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));
                 mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
@@ -905,7 +946,7 @@ void CPU::tick() {
 
         case 0xD4:
             if (!F_CARRY(mMainRegisters.FLAG)) {
-                uint16_t next = (uint16_t) (mMainRegisters.PC + 1);
+                uint16_t next = (uint16_t) (mMainRegisters.PC + 3);
                 mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0xFF00 >> 8));
                 mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));
                 mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
@@ -915,7 +956,7 @@ void CPU::tick() {
 
         case 0xDC:
             if (F_CARRY(mMainRegisters.FLAG)) {
-                uint16_t next = (uint16_t) (mMainRegisters.PC + 1);
+                uint16_t next = (uint16_t) (mMainRegisters.PC + 3);
                 mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0xFF00 >> 8));
                 mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));
                 mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
@@ -925,9 +966,10 @@ void CPU::tick() {
 
             /* RET */
         case 0xC9: {
+            uint16_t next;
 
-            uint16_t next = 0;
-            next |= mMemory.readByte(mMainRegisters.SP++) | (mMemory.readByte(mMainRegisters.SP++) << 8);
+            next = mMemory.readByte(mMainRegisters.SP++);
+            next |= mMemory.readByte(mMainRegisters.SP++) << 8;
             mMainRegisters.PC = next;
             mJump = 1;
         }
@@ -980,6 +1022,7 @@ void CPU::tick() {
             mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (mMainRegisters.PC & 0xFF00 >> 8));\
             mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (mMainRegisters.PC & 0x00FF));\
             mMainRegisters.PC = addr;\
+            mJump = 1;\
     })
         case 0xC7:
             RST(0x0000);
@@ -1243,11 +1286,16 @@ void CPU::tick() {
 }
 
 void CPU::log() {
-    std::cout << "PC: " << std::dec << mMainRegisters.PC << "\t SP: " << mMainRegisters.SP << "\t FLAG: " << (unsigned)mMainRegisters.FLAG << "\n";
-    std::cout << "A:  " << (unsigned)mGPRegisters.A << "\t F: " << (unsigned)mGPRegisters.F << "\n";
-    std::cout << "B:  " << (unsigned)mGPRegisters.B << "\t C: " << (unsigned)mGPRegisters.C << "\n";
-    std::cout << "D:  " << (unsigned)mGPRegisters.B << "\t E: " << (unsigned)mGPRegisters.C << "\n";
-    std::cout << "H:  " << (unsigned)mGPRegisters.B << "\t L: " << (unsigned)mGPRegisters.C << "\n";
+    std::cout << "PC: " << mMainRegisters.PC << "\t SP: " << mMainRegisters.SP << "\t FLAG: " <<
+    (unsigned) mMainRegisters.FLAG << std::hex << "\n";
+    std::cout << "A:  " << (unsigned) mGPRegisters.A << "\t F: " << (unsigned) mGPRegisters.F << "\t AF: " <<
+    mGPRegisters.AF << "\n";
+    std::cout << "B:  " << (unsigned) mGPRegisters.B << "\t C: " << (unsigned) mGPRegisters.C << "\t BC: " <<
+    mGPRegisters.BC << "\n";
+    std::cout << "D:  " << (unsigned) mGPRegisters.D << "\t E: " << (unsigned) mGPRegisters.E << "\t DE: " <<
+    mGPRegisters.DE << "\n";
+    std::cout << "H:  " << (unsigned) mGPRegisters.H << "\t L: " << (unsigned) mGPRegisters.L << "\t HL: " <<
+    mGPRegisters.HL << "\n";
 
 
 }

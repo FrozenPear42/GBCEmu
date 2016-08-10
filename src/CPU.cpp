@@ -3,11 +3,19 @@
 //
 
 #include "CPU.hpp"
+#include <iostream>
+
+CPU::CPU() {
+    mMainRegisters.PC = 0;
+    mMainRegisters.SP = 0;
+    mMainRegisters.FLAG = 0;
+    mMainRegisters.IE = 1;
+}
 
 void CPU::tick() {
     uint8_t OPCode;
     OPCode = mMemory.readByte(mMainRegisters.PC);
-
+    std::cout << "PC: "<< mMainRegisters.PC << " OPCODE: " << std::hex << (unsigned)OPCode << "\n";
     switch (OPCode) {
         /* NOP */
         case 0x00:
@@ -1233,4 +1241,15 @@ void CPU::tick() {
     if (!mJump) mMainRegisters.PC++;
     mJump = 0;
 }
+
+void CPU::log() {
+    std::cout << "PC: " << std::dec << mMainRegisters.PC << "\t SP: " << mMainRegisters.SP << "\t FLAG: " << (unsigned)mMainRegisters.FLAG << "\n";
+    std::cout << "A:  " << (unsigned)mGPRegisters.A << "\t F: " << (unsigned)mGPRegisters.F << "\n";
+    std::cout << "B:  " << (unsigned)mGPRegisters.B << "\t C: " << (unsigned)mGPRegisters.C << "\n";
+    std::cout << "D:  " << (unsigned)mGPRegisters.B << "\t E: " << (unsigned)mGPRegisters.C << "\n";
+    std::cout << "H:  " << (unsigned)mGPRegisters.B << "\t L: " << (unsigned)mGPRegisters.C << "\n";
+
+
+}
+
 

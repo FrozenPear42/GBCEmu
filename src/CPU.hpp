@@ -22,29 +22,29 @@ private:
         union {
             uint16_t AF;
             struct {
-                uint8_t A : 8;
-                uint8_t F : 8;
+                uint8_t A;
+                uint8_t F;
             };
         };
         union {
             uint16_t BC;
             struct {
-                uint8_t B : 8;
-                uint8_t C : 8;
+                uint8_t B;
+                uint8_t C;
             };
         };
         union {
             uint16_t DE;
             struct {
-                uint8_t D : 8;
-                uint8_t E : 8;
+                uint8_t D;
+                uint8_t E;
             };
         };
         union {
             uint16_t HL;
             struct {
-                uint8_t H : 8;
-                uint8_t L : 8;
+                uint8_t H;
+                uint8_t L;
             };
         };
     } mGPRegisters;
@@ -62,8 +62,9 @@ private:
 
     MemoryManager mMemory;
 public:
+    CPU();
     void tick();
-
+    void log();
 private:
     void wait(uint8_t pCycles);
 };

@@ -692,8 +692,330 @@ void CPU::tick() {
         }
             break;
 
+            /* 16-bit ALU */
+            /* ADD */
+#define ADD_16_R(reg) ( \
+            {\
+            uint16_t el_a = mGPRegisters.HL;\
+            uint16_t el_b = reg;\
+            mGPRegisters.HL = el_a + el_b;\
+            uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0); \
+            uint8_t carry = (uint8_t) ((((uint32_t) el_a + (uint32_t) el_b) > 65535) ? 1 : 0);\
+            uint8_t half = (uint8_t) (((mGPRegisters.HL ^ el_a ^ el_b) & 0x0400) >> 10);\
+            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);\
+            })
+        case 0x09:
+            ADD_16_R(mGPRegisters.BC);
+            break;
+        case 0x19:
+            ADD_16_R(mGPRegisters.DE);
+            break;
+        case 0x29:
+            ADD_16_R(mGPRegisters.HL);
+            break;
+        case 0x39:
+            ADD_16_R(mMainRegisters.SP);
+            break;
+            /* ADD SP, n */
+            //FIXME: not sure if ok
+        case 0xE8:
+            int el_a = mMainRegisters.SP;
+            int n = (int) (mMemory.readByte(++mMainRegisters.PC));
+            mMainRegisters.SP += n;
+            uint8_t carry = (uint8_t) (((el_a + n) > 65535 || (el_a + n) < 0) ? 1 : 0);
+            uint8_t half = (uint8_t) (((mMainRegisters.SP ^ el_a ^ n) & 0x0400) >> 10);
+            mMainRegisters.FLAG = FLAGS(0, 0, carry, half);
+            break;
+
+#define INC_16_R(reg) ({ reg++; })
+
+        case 0x03:
+            INC_16_R(mGPRegisters.BC);
+            break;
+        case 0x13:
+            INC_16_R(mGPRegisters.DE);
+            break;
+        case 0x23:
+            INC_16_R(mGPRegisters.HL);
+            break;
+        case 0x33:
+            INC_16_R(mMainRegisters.SP);
+            break;
+
+#define DEC_16_R(reg) ({ reg--; })
+
+        case 0x0B:
+            DEC_16_R(mGPRegisters.BC);
+            break;
+        case 0x1B:
+            DEC_16_R(mGPRegisters.DE);
+            break;
+        case 0x2B:
+            DEC_16_R(mGPRegisters.HL);
+            break;
+        case 0x3B:
+            DEC_16_R(mMainRegisters.SP);
+            break;
+
+            /* DDA */
+        case 0x27:
+            uint8_t reg = mGPRegisters.A;
+            if (F_HALF(mMainRegisters.FLAG) || reg & 0x0F > 9)
+                mGPRegisters.A += 6;
+            mMainRegisters.FLAG &= 0xEF; //reset carry flag
+            if (F_HALF(mMainRegisters.FLAG) || reg > 0x99) {
+                mGPRegisters.A += 0x60;
+                mMainRegisters.FLAG |= 0x10; //set carry flag
+            }
+            mMainRegisters.FLAG = FLAGS((mGPRegisters.A == 0 ? 1 : 0), F_SUB(mMainRegisters.FLAG), 0,
+                                        F_CARRY(mMainRegisters.FLAG));
+            break;
+        case 0x2F:
+            mGPRegisters.A = ~mGPRegisters.A;
+            break;
+        case 0x3F:
+            if (F_CARRY(mMainRegisters.FLAG))
+                mMainRegisters.FLAG &= 0xEF;
+            else
+                mMainRegisters.FLAG |= 0x10;
+            break;
+
+        case 0x37:
+            mMainRegisters.FLAG |= 0x10;
+            break;
+
+        case 0x76:
+            mHalt = 1;
+            break;
+
+        case 0x10:
+            if (mMemory.readByte(++mMainRegisters.PC) == 0x00) {
+                mHalt = 1;
+                //TODO: STOP
+            }
+            break;
+
+        case 0xF3:
+            mMainRegisters.IE = 0;
+            break;
+
+        case 0xFB:
+            mMainRegisters.IE = 1;
+            break;
+
+            //TODO: ROTATIONS
+
+
+            /* JMP */
+        case 0xC3:
+            mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
+            mJump = 1;
+            break;
+        case 0xC2:
+            if (!F_ZERO(mMainRegisters.FLAG)) {
+                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
+                mJump = 1;
+            }
+            break;
+        case 0xCA:
+            if (F_ZERO(mMainRegisters.FLAG)) {
+                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
+                mJump = 1;
+            }
+            break;
+        case 0xD2:
+            if (!F_CARRY(mMainRegisters.FLAG)) {
+                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
+                mJump = 1;
+            }
+            break;
+        case 0xDA:
+            if (F_CARRY(mMainRegisters.FLAG)) {
+                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
+                mJump = 1;
+            }
+            break;
+        case 0xE9:
+            mMainRegisters.PC = mGPRegisters.HL;
+            mJump = 1;
+            break;
+            /* JR */
+        case 0x18:
+            mMainRegisters.PC += mMemory.readByte(++mMainRegisters.PC);
+            mJump = 1;
+            break;
+        case 0x20:
+            if (!F_ZERO(mMainRegisters.FLAG)) {
+                mMainRegisters.PC += mMemory.readByte(++mMainRegisters.PC);
+                mJump = 1;
+            }
+            break;
+        case 0x28:
+            if (F_ZERO(mMainRegisters.FLAG)) {
+                mMainRegisters.PC += mMemory.readByte(++mMainRegisters.PC);
+                mJump = 1;
+            }
+            break;
+        case 0x30:
+            if (!F_CARRY(mMainRegisters.FLAG)) {
+                mMainRegisters.PC += mMemory.readByte(++mMainRegisters.PC);
+                mJump = 1;
+            }
+            break;
+        case 0x38:
+            if (F_CARRY(mMainRegisters.FLAG)) {
+                mMainRegisters.PC += mMemory.readByte(++mMainRegisters.PC);
+                mJump = 1;
+            }
+            break;
+            /* CALL */
+        case 0xCD: {
+            uint16_t next = (uint16_t) (mMainRegisters.PC + 1);
+            mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0xFF00 >> 8));
+            mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));
+            mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
+            mJump = 1;
+        }
+            break;
+
+        case 0xC4:
+            if (!F_ZERO(mMainRegisters.FLAG)) {
+                uint16_t next = (uint16_t) (mMainRegisters.PC + 1);
+                mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0xFF00 >> 8));
+                mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));
+                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
+                mJump = 1;
+            }
+            break;
+
+        case 0xCC:
+            if (F_ZERO(mMainRegisters.FLAG)) {
+                uint16_t next = (uint16_t) (mMainRegisters.PC + 1);
+                mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0xFF00 >> 8));
+                mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));
+                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
+                mJump = 1;
+            }
+            break;
+
+        case 0xD4:
+            if (!F_CARRY(mMainRegisters.FLAG)) {
+                uint16_t next = (uint16_t) (mMainRegisters.PC + 1);
+                mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0xFF00 >> 8));
+                mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));
+                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
+                mJump = 1;
+            }
+            break;
+
+        case 0xDC:
+            if (F_CARRY(mMainRegisters.FLAG)) {
+                uint16_t next = (uint16_t) (mMainRegisters.PC + 1);
+                mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0xFF00 >> 8));
+                mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));
+                mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);
+                mJump = 1;
+            }
+            break;
+
+            /* RET */
+        case 0xC9: {
+
+            uint16_t next = 0;
+            next |= mMemory.readByte(mMainRegisters.SP++) | (mMemory.readByte(mMainRegisters.SP++) << 8);
+            mMainRegisters.PC = next;
+            mJump = 1;
+        }
+            break;
+
+        case 0xD9: {
+            uint16_t next = 0;
+            next |= mMemory.readByte(mMainRegisters.SP++) | (mMemory.readByte(mMainRegisters.SP++) << 8);
+            mMainRegisters.PC = next;
+            mJump = 1;
+            mMainRegisters.IE = 1;
+        }
+            break;
+
+        case 0xC0:
+            if (!F_ZERO(mMainRegisters.FLAG)) {
+                uint16_t next = 0;
+                next |= mMemory.readByte(mMainRegisters.SP++) | (mMemory.readByte(mMainRegisters.SP++) << 8);
+                mMainRegisters.PC = next;
+                mJump = 1;
+            }
+            break;
+        case 0xC8:
+            if (F_ZERO(mMainRegisters.FLAG)) {
+                uint16_t next = 0;
+                next |= mMemory.readByte(mMainRegisters.SP++) | (mMemory.readByte(mMainRegisters.SP++) << 8);
+                mMainRegisters.PC = next;
+                mJump = 1;
+            }
+            break;
+        case 0xD0:
+            if (!F_CARRY(mMainRegisters.FLAG)) {
+                uint16_t next = 0;
+                next |= mMemory.readByte(mMainRegisters.SP++) | (mMemory.readByte(mMainRegisters.SP++) << 8);
+                mMainRegisters.PC = next;
+                mJump = 1;
+            }
+            break;
+        case 0xD8:
+            if (F_CARRY(mMainRegisters.FLAG)) {
+                uint16_t next = 0;
+                next |= mMemory.readByte(mMainRegisters.SP++) | (mMemory.readByte(mMainRegisters.SP++) << 8);
+                mMainRegisters.PC = next;
+                mJump = 1;
+            }
+            break;
+
+            /* RST */
+#define RST(addr) ({\
+            mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (mMainRegisters.PC & 0xFF00 >> 8));\
+            mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (mMainRegisters.PC & 0x00FF));\
+            mMainRegisters.PC = addr;\
+    })
+        case 0xC7:
+            RST(0x0000);
+            break;
+        case 0xCF:
+            RST(0x0008);
+            break;
+        case 0xD7:
+            RST(0x0010);
+            break;
+        case 0xDF:
+            RST(0x0018);
+            break;
+        case 0xE7:
+            RST(0x0020);
+            break;
+        case 0xEF:
+            RST(0x0028);
+            break;
+        case 0xF7:
+            RST(0x0030);
+            break;
+        case 0xFF:
+            RST(0x0038);
+            break;
+
+
+            //TODO: BITS
+        case 0xCB:
+            uint8_t bitOP = mMemory.readByte(++mMainRegisters.PC);
+            switch (bitOP) {
+#define SWAP_R(reg)({\
+            reg = ((reg & 0x0F) << 4) | ((reg & 0xF0) >> 4);\
+            mMainRegisters.FLAG = FLAGS((reg == 0 ? 1 : 0),0,0,0)\
+    })
+            }
+            break;
+
         default:
             throw "Unsupported OP code";
     }
+
 }
 

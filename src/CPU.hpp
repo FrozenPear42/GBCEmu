@@ -53,7 +53,12 @@ private:
         uint16_t SP;
         uint16_t PC;
         uint8_t FLAG;
+        uint8_t IE;
     } mMainRegisters;
+
+    uint8_t mJump = 0;
+    uint8_t mHalt = 0;
+
 
     MemoryManager mMemory;
 public:

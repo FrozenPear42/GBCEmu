@@ -64,6 +64,8 @@ void GPU::tick() {
             scanLine++;
             if (scanLine > 153) {
                 mMode = 2;
+                if (interruptMode & 0x04)
+                    interrupt = true;
                 scanLine = 0;
             }
             break;
@@ -94,7 +96,7 @@ void GPU::tick() {
         mMemory.writeByte(0xFF0F, (uint8_t) (mMemory.readByte(0xFF0F) | 0x01), true);
 
     mMemory.writeByte(0xFF44, scanLine, true);
-    mMemory.writeByte(0xFF41, (uint8_t) ((STAT & 0x03) | mMode), true);
+    mMemory.writeByte(0xFF41, (uint8_t) ((STAT & 0xFC) | mMode), true);
 
 }
 

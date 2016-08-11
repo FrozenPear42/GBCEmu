@@ -10,7 +10,10 @@ CPU::CPU(MemoryManager& pMemory) : mMemory(pMemory) {
     mMainRegisters.PC = 0;
     mMainRegisters.SP = 0;
     mMainRegisters.IME = true;
-    mGPRegisters.F = 0;
+    mGPRegisters.AF = 0;
+    mGPRegisters.BC = 0;
+    mGPRegisters.DE = 0;
+    mGPRegisters.HL = 0;
 }
 
 void CPU::tick() {
@@ -46,6 +49,7 @@ void CPU::tick() {
                 mMainRegisters.PC = 0x0060;
                 mMemory.writeByte(0xFF0F, (uint8_t) (IF & 0xEF));
             }
+            OPCode = mMemory.readByte(mMainRegisters.PC);
         }
     }
 

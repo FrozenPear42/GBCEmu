@@ -8,12 +8,14 @@
 
 #include "CPU.hpp"
 #include "GPU.hpp"
+#include "Audio.hpp"
 
 class GameBoy {
 private:
     MemoryManager mMemoryManager;
     CPU mCPU;
     GPU mGPU;
+    Audio mAudio;
 public:
     GameBoy();
     void tick();

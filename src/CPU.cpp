@@ -20,7 +20,7 @@ void CPU::tick() {
     if (mHalt)
         throw 0; //FIXME: Temporary throw
 
-    std::cout << std::hex << "PC: " << mMainRegisters.PC << " OPCODE: " << (unsigned) OPCode << "\n";
+    //std::cout << std::hex << "PC: " << mMainRegisters.PC << " OPCODE: " << (unsigned) OPCode << "\n";
 
     switch (OPCode) {
         /* NOP */

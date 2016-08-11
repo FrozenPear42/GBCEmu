@@ -5,11 +5,11 @@
 #include "CPU.hpp"
 #include <iostream>
 
-CPU::CPU() {
+CPU::CPU(MemoryManager &pMemory) : mMemory(pMemory) {
     mMainRegisters.PC = 0;
     mMainRegisters.SP = 0;
-    mGPRegisters.F = 0;
     mMainRegisters.IE = 1;
+    mGPRegisters.F = 0;
 }
 
 void CPU::tick() {

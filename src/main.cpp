@@ -1,15 +1,15 @@
 #include <iostream>
-#include "CPU.hpp"
+#include "GameBoy.hpp"
 
 using namespace std;
 
 int main() {
-    CPU cpu;
+    GameBoy boy;
     while(1)
     {
         //if(cin.get() == 'a') break;
         try {
-            cpu.tick();
+            boy.tick();
         } catch(std::string e) {
             std::cout << "ERROR: " << e << "\n";
             break;
@@ -22,7 +22,6 @@ int main() {
             std::cout << "ERROR" << "\n";
             break;
         }
-        cpu.log();
     }
     return 0;
 }

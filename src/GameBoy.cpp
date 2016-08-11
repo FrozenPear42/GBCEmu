@@ -4,7 +4,7 @@
 
 #include "GameBoy.hpp"
 
-GameBoy::GameBoy() : mCPU(mMemoryManager), mGPU(mMemoryManager) {
+GameBoy::GameBoy() : mMemoryManager(), mCPU(mMemoryManager), mGPU(mMemoryManager) {
     Cartridge("C:\\rom.gb");
 }
 

@@ -11,9 +11,9 @@
 
 class GameBoy {
 private:
+    MemoryManager mMemoryManager;
     CPU mCPU;
     GPU mGPU;
-    MemoryManager mMemoryManager;
 public:
     GameBoy();
     void tick();

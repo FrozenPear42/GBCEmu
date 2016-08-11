@@ -3,9 +3,10 @@
 //
 
 #include "CPU.hpp"
+#include "Log.hpp"
 #include <iostream>
 
-CPU::CPU(MemoryManager &pMemory) : mMemory(pMemory) {
+CPU::CPU(MemoryManager& pMemory) : mMemory(pMemory) {
     mMainRegisters.PC = 0;
     mMainRegisters.SP = 0;
     mMainRegisters.IE = 1;
@@ -16,8 +17,8 @@ void CPU::tick() {
     uint8_t OPCode;
     OPCode = mMemory.readByte(mMainRegisters.PC);
 
-    if(mHalt)
-        return;
+    if (mHalt)
+        throw 0; //FIXME: Temporary throw
 
     std::cout << std::hex << "PC: " << mMainRegisters.PC << " OPCODE: " << (unsigned) OPCode << "\n";
 
@@ -825,8 +826,7 @@ void CPU::tick() {
                 mGPRegisters.A += 0x60;
                 mGPRegisters.F |= 0x10; //set carry flag
             }
-            mGPRegisters.F = FLAGS((mGPRegisters.A == 0 ? 1 : 0), F_SUB(mGPRegisters.F), 0,
-                                        F_CARRY(mGPRegisters.F));
+            mGPRegisters.F = FLAGS((mGPRegisters.A == 0 ? 1 : 0), F_SUB(mGPRegisters.F), 0, F_CARRY(mGPRegisters.F));
         }
             break;
         case 0x2F:
@@ -1097,7 +1097,7 @@ void CPU::tick() {
         case 0xCB: {
             uint8_t bitOP = mMemory.readByte(++mMainRegisters.PC);
             uint8_t hl = mMemory.readByte(mGPRegisters.HL);
-            uint8_t *target;
+            uint8_t* target;
 
             switch (bitOP & 0x0F) {
                 case 0x07:
@@ -1251,6 +1251,8 @@ void CPU::tick() {
 }
 
 void CPU::log() {
+    if (mHalt)
+        return;
     std::cout << "PC: " << mMainRegisters.PC << "\t SP: " << mMainRegisters.SP << "\t FLAG: " <<
     (unsigned) mGPRegisters.F << std::hex << "\n";
     std::cout << "A:  " << (unsigned) mGPRegisters.A << "\t F: " << (unsigned) mGPRegisters.F << "\t AF: " <<

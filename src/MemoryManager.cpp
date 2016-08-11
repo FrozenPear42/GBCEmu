@@ -3,6 +3,7 @@
 //
 
 #include "MemoryManager.hpp"
+#include "Log.hpp"
 
 uint8_t MemoryManager::readByte(uint16_t pAddr) {
 
@@ -128,13 +129,13 @@ void MemoryManager::writeByte(uint16_t pAddr, uint8_t pValue) {
                 case 0x0F00:
                     if (pAddr == 0xFFFF) mInterruptFlags = pValue;
                     else if (pAddr >= 0xFF80) mZRAM[pAddr & 0x007F] = pValue;
-                    else
-                        switch (pAddr & 0x00FF) {
-                            //TODO: I/O registers
-                            default:
-                                mIO[pAddr & 0x00FF] = pValue;
-                                break;
+                    else {
+                        mIO[pAddr & 0x00FF] = pValue;
+                        for (auto call : mCallbacks) {
+                            if (call)
+                                call(pAddr, pValue);
                         }
+                    }
                     break;
             }
             break;
@@ -146,9 +147,14 @@ void MemoryManager::writeWordLS(uint16_t pAddr, uint16_t pValue) {
     writeByte((uint16_t) (pAddr + 1), (uint8_t) ((pValue & 0xFF00) >> 8));
 }
 
+void MemoryManager::subscribeForIOChange(std::function<void(uint16_t, uint8_t)>& pCallback) {
+    mCallbacks.push_back(pCallback);
+    Log::i("Gotta new callback");
+}
 
-
-
+void MemoryManager::unsubscribeForIOChange(std::function<void(uint16_t, uint8_t)>& pCallback) {
+    //TODO: remove pCallback from mCallbacks
+}
 
 
 

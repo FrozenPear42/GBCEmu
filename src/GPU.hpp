@@ -9,9 +9,11 @@
 
 class GPU {
 private:
+    std::function<void(uint16_t, uint8_t)> mCallback;
     MemoryManager& mMemory;
 public:
     GPU(MemoryManager& pMemory);
+    ~GPU();
     void tick();
 };
 

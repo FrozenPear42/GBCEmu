@@ -52,7 +52,7 @@ private:
     struct {
         uint16_t SP;
         uint16_t PC;
-        uint8_t IE;
+        bool IME;
     } mMainRegisters;
 
     uint8_t mJump = 0;

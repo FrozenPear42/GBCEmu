@@ -11,7 +11,7 @@ GameBoy::GameBoy() : mMemoryManager(), mCPU(mMemoryManager), mGPU(mMemoryManager
 void GameBoy::tick() {
     mCPU.tick();
     mGPU.tick();
-   // mCPU.log();
+    mCPU.log();
 }
 
 

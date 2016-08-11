@@ -9,7 +9,7 @@
 CPU::CPU(MemoryManager& pMemory) : mMemory(pMemory) {
     mMainRegisters.PC = 0;
     mMainRegisters.SP = 0;
-    mMainRegisters.IE = 1;
+    mMainRegisters.IME = true;
     mGPRegisters.F = 0;
 }
 
@@ -17,10 +17,32 @@ void CPU::tick() {
     uint8_t OPCode;
     OPCode = mMemory.readByte(mMainRegisters.PC);
 
+    if (mMainRegisters.IME) {
+        uint8_t flags = (uint8_t) (mMemory.readByte(0xFF0F) & mMemory.readByte(0xFFFF) & 0x3F);
+        if ( flags ) {
+            mMainRegisters.IME = false;
+            mMemory.writeByte(--mMainRegisters.SP, (uint8_t) ((mMainRegisters.PC & 0xFF00) >> 8));
+            mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (mMainRegisters.PC & 0x00FF));
+            if(mHalt) mHalt = 0;
+
+            if(flags & 0x01) {
+                mMainRegisters.PC = 0x0040;
+            }else if(flags & 0x02) {
+                mMainRegisters.PC = 0x0048;
+            }else if(flags & 0x04) {
+                mMainRegisters.PC = 0x0050;
+            }else if(flags & 0x08) {
+                mMainRegisters.PC = 0x0058;
+            }else if(flags & 0x10) {
+                mMainRegisters.PC = 0x0060;
+            }
+        }
+    }
+
     if (mHalt)
         throw 0; //FIXME: Temporary throw
 
-    //std::cout << std::hex << "PC: " << mMainRegisters.PC << " OPCODE: " << (unsigned) OPCode << "\n";
+    std::cout << std::hex << "PC: " << mMainRegisters.PC << " OPCODE: " << (unsigned) OPCode << "\n";
 
     switch (OPCode) {
         /* NOP */
@@ -855,11 +877,11 @@ void CPU::tick() {
             break;
 
         case 0xF3:
-            mMainRegisters.IE = 0;
+            mMainRegisters.IME = false;
             break;
 
         case 0xFB:
-            mMainRegisters.IE = 1;
+            mMainRegisters.IME = true;
             break;
 
 
@@ -968,7 +990,7 @@ void CPU::tick() {
             /* RETI */
         case 0xD9:
             RET_R(true);
-            mMainRegisters.IE = 1;
+            mMainRegisters.IME = true;
             break;
 
         case 0xC0:

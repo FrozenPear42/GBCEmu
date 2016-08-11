@@ -16,6 +16,9 @@ CPU::CPU(MemoryManager& pMemory) : mMemory(pMemory) {
 void CPU::tick() {
     uint8_t OPCode;
     OPCode = mMemory.readByte(mMainRegisters.PC);
+    if(mMainRegisters.PC == 0x100){
+        mMemory.finishStartup();
+    }
 
     if (mMainRegisters.IME) {
         uint8_t flags = (uint8_t) (mMemory.readByte(0xFF0F) & mMemory.readByte(0xFFFF) & 0x3F);
@@ -25,16 +28,23 @@ void CPU::tick() {
             mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (mMainRegisters.PC & 0x00FF));
             if(mHalt) mHalt = 0;
 
+            uint8_t IF = mMemory.readByte(0xFF0F);
+
             if(flags & 0x01) {
                 mMainRegisters.PC = 0x0040;
+                mMemory.writeByte(0xFF0F, (uint8_t) (IF & 0xFE));
             }else if(flags & 0x02) {
                 mMainRegisters.PC = 0x0048;
+                mMemory.writeByte(0xFF0F, (uint8_t) (IF & 0xFD));
             }else if(flags & 0x04) {
                 mMainRegisters.PC = 0x0050;
+                mMemory.writeByte(0xFF0F, (uint8_t) (IF & 0xFB));
             }else if(flags & 0x08) {
                 mMainRegisters.PC = 0x0058;
+                mMemory.writeByte(0xFF0F, (uint8_t) (IF & 0xF7));
             }else if(flags & 0x10) {
                 mMainRegisters.PC = 0x0060;
+                mMemory.writeByte(0xFF0F, (uint8_t) (IF & 0xEF));
             }
         }
     }
@@ -42,7 +52,7 @@ void CPU::tick() {
     if (mHalt)
         throw 0; //FIXME: Temporary throw
 
-    std::cout << std::hex << "PC: " << mMainRegisters.PC << " OPCODE: " << (unsigned) OPCode << "\n";
+    //std::cout << std::hex << "PC: " << mMainRegisters.PC << " OPCODE: " << (unsigned) OPCode << "\n";
 
     switch (OPCode) {
         /* NOP */
@@ -798,7 +808,6 @@ void CPU::tick() {
             ADD_16_R(mMainRegisters.SP);
             break;
             /* ADD SP, n */
-            //FIXME: not sure if ok
         case 0xE8: {
 
             int el_a = mMainRegisters.SP;
@@ -853,16 +862,18 @@ void CPU::tick() {
             break;
         case 0x2F:
             mGPRegisters.A = ~mGPRegisters.A;
+            mGPRegisters.F = FLAGS(F_ZERO(mGPRegisters.F),1,1,F_CARRY(mGPRegisters.F));
             break;
         case 0x3F:
             if (F_CARRY(mGPRegisters.F))
-                mGPRegisters.F &= 0xEF;
+                mGPRegisters.F = FLAGS(F_ZERO(mGPRegisters.F),0,0,0);
             else
-                mGPRegisters.F |= 0x10;
+                mGPRegisters.F = FLAGS(F_ZERO(mGPRegisters.F),0,0,1);
+
             break;
 
         case 0x37:
-            mGPRegisters.F |= 0x10;
+            mGPRegisters.F = FLAGS(F_ZERO(mGPRegisters.F),0,0,1);
             break;
 
         case 0x76:

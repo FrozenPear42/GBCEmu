@@ -5,6 +5,8 @@
 #include "MemoryManager.hpp"
 #include "Log.hpp"
 
+MemoryManager::MemoryManager() : mCartridge("C:\\rom.gb") { }
+
 uint8_t MemoryManager::readByte(uint16_t pAddr) {
 
     if (mStartup && pAddr <= 0x00FF)
@@ -81,7 +83,7 @@ uint16_t MemoryManager::readWordLS(uint16_t pAddr) {
     return ((b << 8) | a);
 }
 
-void MemoryManager::writeByte(uint16_t pAddr, uint8_t pValue) {
+void MemoryManager::writeByte(uint16_t pAddr, uint8_t pValue, bool pSilent) {
     switch (pAddr & 0xF000) {
         case 0x0000:
         case 0x1000:
@@ -132,7 +134,7 @@ void MemoryManager::writeByte(uint16_t pAddr, uint8_t pValue) {
                     else {
                         mIO[pAddr & 0x00FF] = pValue;
                         for (auto call : mCallbacks) {
-                            if (call)
+                            if (call && !pSilent)
                                 call(pAddr, pValue);
                         }
                     }
@@ -155,6 +157,11 @@ void MemoryManager::subscribeForIOChange(std::function<void(uint16_t, uint8_t)>&
 void MemoryManager::unsubscribeForIOChange(std::function<void(uint16_t, uint8_t)>& pCallback) {
     //TODO: remove pCallback from mCallbacks
 }
+
+void MemoryManager::finishStartup() {
+    mStartup = false;
+}
+
 
 
 

@@ -4,14 +4,12 @@
 
 #include "GameBoy.hpp"
 
-GameBoy::GameBoy() : mMemoryManager(), mCPU(mMemoryManager), mGPU(mMemoryManager), mAudio(mMemoryManager) {
-    Cartridge("C:\\rom.gb");
-}
+GameBoy::GameBoy() : mMemoryManager(), mCPU(mMemoryManager), mGPU(mMemoryManager), mAudio(mMemoryManager) { }
 
 void GameBoy::tick() {
     mCPU.tick();
     mGPU.tick();
-    mCPU.log();
+    //mCPU.log();
 }
 
 

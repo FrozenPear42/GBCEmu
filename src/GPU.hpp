@@ -11,10 +11,18 @@ class GPU {
 private:
     std::function<void(uint16_t, uint8_t)> mCallback;
     MemoryManager& mMemory;
+    uint8_t mMode;
+    unsigned mTicks;
 public:
     GPU(MemoryManager& pMemory);
+
     ~GPU();
+
     void tick();
+
+private:
+    void draw();
+    void generateTexture();
 };
 
 

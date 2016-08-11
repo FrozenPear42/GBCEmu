@@ -52,7 +52,6 @@ private:
     struct {
         uint16_t SP;
         uint16_t PC;
-        uint8_t FLAG;
         uint8_t IE;
     } mMainRegisters;
 
@@ -60,12 +59,10 @@ private:
     uint8_t mHalt = 0;
 
 
-    MemoryManager mMemory;
+    MemoryManager &mMemory;
 public:
-    CPU();
-
+    CPU(MemoryManager &pMemory);
     void tick();
-
     void log();
 
 private:

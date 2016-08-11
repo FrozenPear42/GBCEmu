@@ -8,14 +8,19 @@
 CPU::CPU() {
     mMainRegisters.PC = 0;
     mMainRegisters.SP = 0;
-    mMainRegisters.FLAG = 0;
+    mGPRegisters.F = 0;
     mMainRegisters.IE = 1;
 }
 
 void CPU::tick() {
     uint8_t OPCode;
     OPCode = mMemory.readByte(mMainRegisters.PC);
+
+    if(mHalt)
+        return;
+
     std::cout << std::hex << "PC: " << mMainRegisters.PC << " OPCODE: " << (unsigned) OPCode << "\n";
+
     switch (OPCode) {
         /* NOP */
         case 0x00:
@@ -368,7 +373,7 @@ void CPU::tick() {
             uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);\
             uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b) > 255) ? 1 : 0);\
             uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);\
-            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);\
+            mGPRegisters.F = FLAGS(zero, 0, carry, half);\
     })
 
         case 0x87:
@@ -404,11 +409,11 @@ void CPU::tick() {
             {\
             uint8_t el_a = mGPRegisters.A;\
             uint8_t el_b = reg;\
-            mGPRegisters.A = el_a + el_b + F_CARRY(mMainRegisters.FLAG);\
+            mGPRegisters.A = el_a + el_b + F_CARRY(mGPRegisters.F);\
             uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);\
-            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b + F_CARRY(mMainRegisters.FLAG)) > 255) ? 1 : 0);\
+            uint8_t carry = (uint8_t) ((((unsigned) el_a + (unsigned) el_b + F_CARRY(mGPRegisters.F)) > 255) ? 1 : 0);\
             uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);\
-            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);\
+            mGPRegisters.F = FLAGS(zero, 0, carry, half);\
     })
         case 0x8F:
             ADC_R(mGPRegisters.A);
@@ -447,7 +452,7 @@ void CPU::tick() {
             uint8_t carry = (uint8_t) (((int) el_a + (int) el_b < 0) ? 1 : 0);\
             uint8_t half = (uint8_t) (((res ^ el_a ^ el_b) & 0x10) >> 4);\
             mGPRegisters.A = res;\
-            mMainRegisters.FLAG = FLAGS(zero, 1, carry, half);\
+            mGPRegisters.F = FLAGS(zero, 1, carry, half);\
     })
         case 0x97:
             SUB_R(mGPRegisters.A);
@@ -486,7 +491,7 @@ void CPU::tick() {
             uint8_t zero = (uint8_t) (res == 0 ? 1 : 0);\
             uint8_t carry = (uint8_t) (((int) el_a + (int) el_b < 0) ? 1 : 0);\
             uint8_t half = (uint8_t) (((res ^ el_a ^ el_b) & 0x10) >> 4);\
-            mMainRegisters.FLAG = FLAGS(zero, 1, carry, half);\
+            mGPRegisters.F = FLAGS(zero, 1, carry, half);\
     })
         case 0xBF:
             CP_R(mGPRegisters.A);
@@ -520,12 +525,12 @@ void CPU::tick() {
 #define SBC_R(reg) (\
             {\
             uint8_t el_a = mGPRegisters.A;\
-            uint8_t el_b = reg + F_CARRY(mMainRegisters.FLAG);\
+            uint8_t el_b = reg + F_CARRY(mGPRegisters.F);\
             mGPRegisters.A = el_a - el_b;\
             uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0);\
             uint8_t carry = (uint8_t) (((int) el_a + (int) el_b < 0) ? 1 : 0);\
             uint8_t half = (uint8_t) (((mGPRegisters.A ^ el_a ^ el_b) & 0x10) >> 4);\
-            mMainRegisters.FLAG = FLAGS(zero, 1, carry, half);\
+            mGPRegisters.F = FLAGS(zero, 1, carry, half);\
     })
         case 0x9F:
             SBC_R(mGPRegisters.A);
@@ -561,7 +566,7 @@ void CPU::tick() {
             uint8_t el_a = mGPRegisters.A;\
             uint8_t el_b = reg;\
             mGPRegisters.A = el_a & el_b;\
-            mMainRegisters.FLAG = FLAGS((mGPRegisters.A == 0 ? 1 : 0), 0, 1, 0);\
+            mGPRegisters.F = FLAGS((mGPRegisters.A == 0 ? 1 : 0), 0, 1, 0);\
     })
         case 0xA7:
             AND_R(mGPRegisters.A);
@@ -596,7 +601,7 @@ void CPU::tick() {
             uint8_t el_a = mGPRegisters.A;\
             uint8_t el_b = reg;\
             mGPRegisters.A = el_a | el_b;\
-            mMainRegisters.FLAG = FLAGS((mGPRegisters.A == 0 ? 1 : 0), 0, 1, 0);\
+            mGPRegisters.F = FLAGS((mGPRegisters.A == 0 ? 1 : 0), 0, 1, 0);\
             })
         case 0xB7:
             OR_R(mGPRegisters.A);
@@ -631,7 +636,7 @@ void CPU::tick() {
             uint8_t el_a = mGPRegisters.A;\
             uint8_t el_b = reg;\
             mGPRegisters.A = el_a ^ el_b;\
-            mMainRegisters.FLAG = FLAGS((mGPRegisters.A == 0 ? 1 : 0), 0, 1, 0);\
+            mGPRegisters.F = FLAGS((mGPRegisters.A == 0 ? 1 : 0), 0, 1, 0);\
     })
         case 0xAF:
             XOR_R(mGPRegisters.A);
@@ -669,7 +674,7 @@ void CPU::tick() {
             reg = el_a + el_b; \
             uint8_t zero = (uint8_t) (reg == 0 ? 1 : 0); \
             uint8_t half = (uint8_t) (((reg ^ el_a ^ el_b) & 0x10) >> 4); \
-            mMainRegisters.FLAG = FLAGS(zero, 0, F_CARRY(mMainRegisters.FLAG), half); \
+            mGPRegisters.F = FLAGS(zero, 0, F_CARRY(mGPRegisters.F), half); \
     })
         case 0x3C:
             INC_R(mGPRegisters.A);
@@ -699,7 +704,7 @@ void CPU::tick() {
             mMemory.writeByte(mGPRegisters.HL, reg);
             uint8_t zero = (uint8_t) (reg == 0 ? 1 : 0);
             uint8_t half = (uint8_t) (((reg ^ el_a ^ el_b) & 0x10) >> 4);
-            mMainRegisters.FLAG = FLAGS(zero, 0, F_CARRY(mMainRegisters.FLAG), half);
+            mGPRegisters.F = FLAGS(zero, 0, F_CARRY(mGPRegisters.F), half);
         }
             break;
 
@@ -711,7 +716,7 @@ void CPU::tick() {
             reg = el_a - el_b; \
             uint8_t zero = (uint8_t) (reg == 0 ? 1 : 0); \
             uint8_t half = (uint8_t) (((reg ^ el_a ^ el_b) & 0x10) >> 4); \
-            mMainRegisters.FLAG = FLAGS(zero, 1, F_CARRY(mMainRegisters.FLAG), half); \
+            mGPRegisters.F = FLAGS(zero, 1, F_CARRY(mGPRegisters.F), half); \
     })
         case 0x3D:
             DEC_R(mGPRegisters.A);
@@ -741,7 +746,7 @@ void CPU::tick() {
             mMemory.writeByte(mGPRegisters.HL, reg);
             uint8_t zero = (uint8_t) (reg == 0 ? 1 : 0);
             uint8_t half = (uint8_t) (((reg ^ el_a ^ el_b) & 0x10) >> 4);
-            mMainRegisters.FLAG = FLAGS(zero, 1, F_CARRY(mMainRegisters.FLAG), half);
+            mGPRegisters.F = FLAGS(zero, 1, F_CARRY(mGPRegisters.F), half);
         }
             break;
 
@@ -755,7 +760,7 @@ void CPU::tick() {
             uint8_t zero = (uint8_t) (mGPRegisters.A == 0 ? 1 : 0); \
             uint8_t carry = (uint8_t) ((((uint32_t) el_a + (uint32_t) el_b) > 65535) ? 1 : 0);\
             uint8_t half = (uint8_t) (((mGPRegisters.HL ^ el_a ^ el_b) & 0x0400) >> 10);\
-            mMainRegisters.FLAG = FLAGS(zero, 0, carry, half);\
+            mGPRegisters.F = FLAGS(zero, 0, carry, half);\
             })
         case 0x09:
             ADD_16_R(mGPRegisters.BC);
@@ -778,7 +783,7 @@ void CPU::tick() {
             mMainRegisters.SP = (uint16_t) ((int) mMainRegisters.SP + n);
             uint8_t carry = (uint8_t) (((el_a + n) > 65535 || (el_a + n) < 0) ? 1 : 0);
             uint8_t half = (uint8_t) (((mMainRegisters.SP ^ el_a ^ n) & 0x0400) >> 10);
-            mMainRegisters.FLAG = FLAGS(0, 0, carry, half);
+            mGPRegisters.F = FLAGS(0, 0, carry, half);
         }
             break;
 
@@ -811,31 +816,31 @@ void CPU::tick() {
             /* DDA */
         case 0x27: {
             uint8_t reg = mGPRegisters.A;
-            if (F_HALF(mMainRegisters.FLAG) || (reg & 0x0F) > 9)
+            if (F_HALF(mGPRegisters.F) || (reg & 0x0F) > 9)
                 mGPRegisters.A += 6;
 
-            mMainRegisters.FLAG &= 0xEF; //reset carry flag
+            mGPRegisters.F &= 0xEF; //reset carry flag
 
-            if (F_HALF(mMainRegisters.FLAG) || reg > 0x99) {
+            if (F_HALF(mGPRegisters.F) || reg > 0x99) {
                 mGPRegisters.A += 0x60;
-                mMainRegisters.FLAG |= 0x10; //set carry flag
+                mGPRegisters.F |= 0x10; //set carry flag
             }
-            mMainRegisters.FLAG = FLAGS((mGPRegisters.A == 0 ? 1 : 0), F_SUB(mMainRegisters.FLAG), 0,
-                                        F_CARRY(mMainRegisters.FLAG));
+            mGPRegisters.F = FLAGS((mGPRegisters.A == 0 ? 1 : 0), F_SUB(mGPRegisters.F), 0,
+                                        F_CARRY(mGPRegisters.F));
         }
             break;
         case 0x2F:
             mGPRegisters.A = ~mGPRegisters.A;
             break;
         case 0x3F:
-            if (F_CARRY(mMainRegisters.FLAG))
-                mMainRegisters.FLAG &= 0xEF;
+            if (F_CARRY(mGPRegisters.F))
+                mGPRegisters.F &= 0xEF;
             else
-                mMainRegisters.FLAG |= 0x10;
+                mGPRegisters.F |= 0x10;
             break;
 
         case 0x37:
-            mMainRegisters.FLAG |= 0x10;
+            mGPRegisters.F |= 0x10;
             break;
 
         case 0x76:
@@ -872,16 +877,16 @@ void CPU::tick() {
             JMP_R(true);
             break;
         case 0xC2:
-            JMP_R(!F_ZERO(mMainRegisters.FLAG));
+            JMP_R(!F_ZERO(mGPRegisters.F));
             break;
         case 0xCA:
-            JMP_R(F_ZERO(mMainRegisters.FLAG));
+            JMP_R(F_ZERO(mGPRegisters.F));
             break;
         case 0xD2:
-            JMP_R(!F_CARRY(mMainRegisters.FLAG));
+            JMP_R(!F_CARRY(mGPRegisters.F));
             break;
         case 0xDA:
-            JMP_R(F_CARRY(mMainRegisters.FLAG));
+            JMP_R(F_CARRY(mGPRegisters.F));
             break;
         case 0xE9:
             mMainRegisters.PC = mGPRegisters.HL;
@@ -905,16 +910,16 @@ void CPU::tick() {
         }
             break;
         case 0x20:
-            JR_R(!F_ZERO(mMainRegisters.FLAG));
+            JR_R(!F_ZERO(mGPRegisters.F));
             break;
         case 0x28:
-            JR_R(F_ZERO(mMainRegisters.FLAG));
+            JR_R(F_ZERO(mGPRegisters.F));
             break;
         case 0x30:
-            JR_R(!F_CARRY(mMainRegisters.FLAG));
+            JR_R(!F_CARRY(mGPRegisters.F));
             break;
         case 0x38:
-            JR_R(F_CARRY(mMainRegisters.FLAG));
+            JR_R(F_CARRY(mGPRegisters.F));
             break;
 
 #define CALL_R(cond) ({\
@@ -931,19 +936,19 @@ void CPU::tick() {
             break;
 
         case 0xC4:
-            CALL_R(!F_ZERO(mMainRegisters.FLAG));
+            CALL_R(!F_ZERO(mGPRegisters.F));
             break;
 
         case 0xCC:
-            CALL_R(F_ZERO(mMainRegisters.FLAG));
+            CALL_R(F_ZERO(mGPRegisters.F));
             break;
 
         case 0xD4:
-            CALL_R(!F_CARRY(mMainRegisters.FLAG));
+            CALL_R(!F_CARRY(mGPRegisters.F));
             break;
 
         case 0xDC:
-            CALL_R(F_CARRY(mMainRegisters.FLAG));
+            CALL_R(F_CARRY(mGPRegisters.F));
             break;
 
 #define RET_R(cond) ({\
@@ -967,16 +972,16 @@ void CPU::tick() {
             break;
 
         case 0xC0:
-            RET_R(!F_ZERO(mMainRegisters.FLAG));
+            RET_R(!F_ZERO(mGPRegisters.F));
             break;
         case 0xC8:
-            RET_R(F_ZERO(mMainRegisters.FLAG));
+            RET_R(F_ZERO(mGPRegisters.F));
             break;
         case 0xD0:
-            RET_R(!F_CARRY(mMainRegisters.FLAG));
+            RET_R(!F_CARRY(mGPRegisters.F));
             break;
         case 0xD8:
-            RET_R(F_CARRY(mMainRegisters.FLAG));
+            RET_R(F_CARRY(mGPRegisters.F));
             break;
 
             /* RST */
@@ -1015,52 +1020,52 @@ void CPU::tick() {
             uint8_t c = (uint8_t) (((reg) & 0x80) >> 7);\
             (reg) <<= 1;\
             (reg) |= c;\
-            mMainRegisters.FLAG = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
+            mGPRegisters.F = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
     })
 
 #define RL_R(reg) ({\
             uint8_t c = (uint8_t) (((reg) & 0x80) >> 7);\
             (reg) <<= 1;\
-            (reg) |= F_CARRY(mMainRegisters.FLAG);\
-            mMainRegisters.FLAG = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
+            (reg) |= F_CARRY(mGPRegisters.F);\
+            mGPRegisters.F = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
     })
 
 #define RRC_R(reg) ({\
             uint8_t c = (uint8_t) ((reg) & 0x01);\
             (reg) >>= 1;\
             (reg) |= (c << 7);\
-            mMainRegisters.FLAG = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
+            mGPRegisters.F = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
     })
 
 #define RR_R(reg) ({\
             uint8_t c = (uint8_t) ((reg) & 0x01);\
             (reg) >>= 1;\
-            (reg) |= F_CARRY(mMainRegisters.FLAG);\
-            mMainRegisters.FLAG = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
+            (reg) |= F_CARRY(mGPRegisters.F);\
+            mGPRegisters.F = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
     })
 
 #define SLA_R(reg) ({\
             uint8_t c = (uint8_t) (((reg) & 0x80) >> 7);\
             (reg) <<= 1;\
-            mMainRegisters.FLAG = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
+            mGPRegisters.F = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
     })
 
 #define SRA_R(reg) ({\
             uint8_t c = (uint8_t) ((reg) & 0x01);\
             (reg) >>= 1;\
             (reg) |= 0x80;\
-            mMainRegisters.FLAG = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
+            mGPRegisters.F = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
     })
 
 #define SRL_R(reg) ({\
             uint8_t c = (uint8_t) ((reg) & 0x01);\
             (reg) >>= 1;\
-            mMainRegisters.FLAG = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
+            mGPRegisters.F = FLAGS((reg) == 0 ? 1 : 0, 0, 0, c);\
     })
 
 #define BIT_R(reg, id) ({\
             uint8_t zero = (reg >> id) & 0x01;\
-            mMainRegisters.FLAG = FLAGS(zero == 0 ? 1 : 0, 0, 1, F_CARRY(mMainRegisters.FLAG));  \
+            mGPRegisters.F = FLAGS(zero == 0 ? 1 : 0, 0, 1, F_CARRY(mGPRegisters.F));  \
     })
 
 #define SET_R(reg, id) ({\
@@ -1153,7 +1158,7 @@ void CPU::tick() {
                 case 0x30:
                     //SWAP
                     *target = (uint8_t) (((*target & 0x0F) << 4) | ((*target & 0xF0) >> 4));
-                    mMainRegisters.FLAG = FLAGS((*target == 0 ? 1 : 0), 0, 0, 0);
+                    mGPRegisters.F = FLAGS((*target == 0 ? 1 : 0), 0, 0, 0);
                     break;
                 case 0x38:
                     SRL_R(*target);
@@ -1247,7 +1252,7 @@ void CPU::tick() {
 
 void CPU::log() {
     std::cout << "PC: " << mMainRegisters.PC << "\t SP: " << mMainRegisters.SP << "\t FLAG: " <<
-    (unsigned) mMainRegisters.FLAG << std::hex << "\n";
+    (unsigned) mGPRegisters.F << std::hex << "\n";
     std::cout << "A:  " << (unsigned) mGPRegisters.A << "\t F: " << (unsigned) mGPRegisters.F << "\t AF: " <<
     mGPRegisters.AF << "\n";
     std::cout << "B:  " << (unsigned) mGPRegisters.B << "\t C: " << (unsigned) mGPRegisters.C << "\t BC: " <<

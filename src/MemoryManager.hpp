@@ -99,7 +99,7 @@ class MemoryManager {
     uint8_t mIRAM[0x2000] = {0};
     uint8_t mZRAM[0x80] = {0};
     uint8_t mIO[0x4C] = {0};
-    uint8_t mInterruptFlags = 0;
+    uint8_t mInterruptEnable = 0;
 public:
     MemoryManager();
 

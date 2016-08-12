@@ -54,7 +54,7 @@ void CPU::tick() {
     }
 
     if (mHalt)
-        throw 0; //FIXME: Temporary throw
+        throw std::string("HALT"); //FIXME: Temporary throw
 
     //std::cout << std::hex << "PC: " << mMainRegisters.PC << " OPCODE: " << (unsigned) OPCode << "\n";
 

@@ -1,4 +1,6 @@
 .idea
+SFML
+
 # Compiled Object files
 *.slo
 *.lo

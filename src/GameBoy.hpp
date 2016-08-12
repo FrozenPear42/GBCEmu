@@ -12,13 +12,16 @@
 
 class GameBoy {
 private:
+    sf::Window mWindow;
+
     MemoryManager mMemoryManager;
     CPU mCPU;
     GPU mGPU;
     Audio mAudio;
 public:
-    GameBoy();
-    void tick();
+    GameBoy(std::string pName);
+    ~GameBoy();
+    int tick();
 };
 
 

@@ -4,12 +4,12 @@
 using namespace std;
 
 int main() {
-    GameBoy boy;
+    GameBoy boy("GBC");
     while(1)
     {
         //if(cin.get() == 'a') break;
         try {
-            boy.tick();
+            if(boy.tick()) break;
         } catch(std::string e) {
             std::cout << "ERROR: " << e << "\n";
             break;

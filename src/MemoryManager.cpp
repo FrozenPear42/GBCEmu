@@ -65,7 +65,7 @@ uint8_t MemoryManager::readByte(uint16_t pAddr) {
                         return 0x00;
                     /* I/O, Zero Page, Interrupts */
                 case 0x0F00:
-                    if (pAddr == 0xFFFF) return mInterruptFlags;
+                    if (pAddr == 0xFFFF) return mInterruptEnable;
                     else if (pAddr >= 0xFF80) return mZRAM[pAddr & 0x007F];
                     else return mIO[pAddr & 0x00FF];
             }
@@ -129,7 +129,7 @@ void MemoryManager::writeByte(uint16_t pAddr, uint8_t pValue, bool pSilent) {
                     mORAM[pAddr & 0x00FF] = pValue;
                     break;
                 case 0x0F00:
-                    if (pAddr == 0xFFFF) mInterruptFlags = pValue;
+                    if (pAddr == 0xFFFF) mInterruptEnable = pValue;
                     else if (pAddr >= 0xFF80) mZRAM[pAddr & 0x007F] = pValue;
                     else {
                         mIO[pAddr & 0x00FF] = pValue;

@@ -5,8 +5,7 @@
 #include "GPU.hpp"
 #include "Log.hpp"
 
-
-GPU::GPU(MemoryManager& pMemory) : mMemory(pMemory), mTicks(0), mMode(0) {
+GPU::GPU(MemoryManager& pMemory, sf::Window& pWindow) : mMemory(pMemory), mTicks(0), mMode(0), mWindow(pWindow) {
 
     mCallback = [&](uint16_t pAddr, uint8_t pData) {
         if ((pAddr & 0x00F0) == 0x0040) {

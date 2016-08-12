@@ -4,13 +4,35 @@
 
 #include "GameBoy.hpp"
 
-GameBoy::GameBoy() : mMemoryManager(), mCPU(mMemoryManager), mGPU(mMemoryManager), mAudio(mMemoryManager) { }
+GameBoy::GameBoy(std::string pName) : mMemoryManager(),
+                                      mWindow(sf::VideoMode(160, 144), pName),
+                                      mCPU(mMemoryManager),
+                                      mGPU(mMemoryManager, mWindow),
+                                      mAudio(mMemoryManager) {
+    mWindow.setFramerateLimit(60);
+}
 
-void GameBoy::tick() {
+GameBoy::~GameBoy() {
+    mWindow.close();
+}
+
+int GameBoy::tick() {
+    if (!mWindow.isOpen())
+        return 1;
+
+    sf::Event event;
+    while(mWindow.pollEvent(event)) {
+        switch(event.type){
+            case sf::Event::Closed:
+                mWindow.close();
+                return 1;
+            default:
+                break;
+        }
+    }
+
     mCPU.tick();
     mGPU.tick();
     //mCPU.log();
+    return 0;
 }
-
-
-

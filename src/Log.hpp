@@ -15,6 +15,10 @@ public:
         std::cout << "[INFO] " << pMessage << "\n";
     };
 
+    static void i(const char* pMessage) {
+        std::cout << "[INFO] " << pMessage << "\n";
+    };
+
     static void i(char* pMessage) {
         std::cout << "[INFO] " << pMessage << "\n";
     };

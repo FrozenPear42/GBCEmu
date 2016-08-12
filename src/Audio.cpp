@@ -12,5 +12,5 @@ Audio::Audio(MemoryManager& pMemory) : mMemory(pMemory) {
             std::cout << "ADDR: " << std::hex << pAddr << " VAL: " << (unsigned) pData << std::endl;
         }
     };
-    pMemory.subscribeForIOChange(mCallback);
+    pMemory.subscribeIO(mCallback);
 }

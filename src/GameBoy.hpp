@@ -9,10 +9,11 @@
 #include "CPU.hpp"
 #include "GPU.hpp"
 #include "Audio.hpp"
+#include<SFML/Graphics/RenderWindow.hpp>
 
 class GameBoy {
 private:
-    sf::Window mWindow;
+    sf::RenderWindow mWindow;
 
     MemoryManager mMemoryManager;
     CPU mCPU;

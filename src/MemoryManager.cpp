@@ -5,7 +5,7 @@
 #include "MemoryManager.hpp"
 #include "Log.hpp"
 
-MemoryManager::MemoryManager() : mCartridge("C:\\rom.gb") { }
+MemoryManager::MemoryManager() : mCartridge("rom_bw.gb") { }
 
 uint8_t MemoryManager::readByte(uint16_t pAddr) {
 
@@ -100,6 +100,10 @@ void MemoryManager::writeByte(uint16_t pAddr, uint8_t pValue, bool pSilent) {
         case 0x8000:
         case 0x9000:
             mVRAM[pAddr & 0x1FFF] = pValue;
+            for (auto call : mVRAMCallbacks) {
+                if (call && !pSilent)
+                    call(pAddr, mVRAM);
+            }
             break;
         case 0xC000:
         case 0xD000:
@@ -133,7 +137,7 @@ void MemoryManager::writeByte(uint16_t pAddr, uint8_t pValue, bool pSilent) {
                     else if (pAddr >= 0xFF80) mZRAM[pAddr & 0x007F] = pValue;
                     else {
                         mIO[pAddr & 0x00FF] = pValue;
-                        for (auto call : mCallbacks) {
+                        for (auto call : mIOCallbacks) {
                             if (call && !pSilent)
                                 call(pAddr, pValue);
                         }
@@ -149,18 +153,27 @@ void MemoryManager::writeWordLS(uint16_t pAddr, uint16_t pValue) {
     writeByte((uint16_t) (pAddr + 1), (uint8_t) ((pValue & 0xFF00) >> 8));
 }
 
-void MemoryManager::subscribeForIOChange(std::function<void(uint16_t, uint8_t)>& pCallback) {
-    mCallbacks.push_back(pCallback);
-    Log::i("Gotta new callback");
+void MemoryManager::subscribeIO(std::function<void(uint16_t, uint8_t)> pCallback) {
+    mIOCallbacks.push_back(pCallback);
+    Log::i("New IO callback");
 }
 
-void MemoryManager::unsubscribeForIOChange(std::function<void(uint16_t, uint8_t)>& pCallback) {
-    //TODO: remove pCallback from mCallbacks
+void MemoryManager::subscribeVRAM(std::function<void(uint16_t, uint8_t*)> pCallback) {
+    mVRAMCallbacks.push_back(pCallback);
+    Log::i("New VRAM callback");
+}
+
+
+void MemoryManager::unsubscribeIO(std::function<void(uint16_t, uint8_t)> pCallback) {
+    //TODO: remove pCallback from mIOCallbacks
 }
 
 void MemoryManager::finishStartup() {
     mStartup = false;
 }
+
+
+
 
 
 

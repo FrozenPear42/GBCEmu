@@ -3,6 +3,7 @@
 //
 
 #include "GameBoy.hpp"
+#include <SFML/Window.hpp>
 
 GameBoy::GameBoy(std::string pName) : mMemoryManager(),
                                       mWindow(sf::VideoMode(160, 144), pName),

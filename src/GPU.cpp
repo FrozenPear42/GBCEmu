@@ -16,6 +16,13 @@ GPU::GPU(MemoryManager& pMemory, sf::RenderWindow& pWindow) : mMemory(pMemory), 
                 case 0x40:
                     LCDCAccess(pData);
                     break;
+                case 0x42:
+                    mScrollY = pData;
+                    break;
+                case 0x43:
+                    mScrollX = pData;
+                    break;
+
                 default:
                     break;
             }
@@ -45,8 +52,22 @@ GPU::GPU(MemoryManager& pMemory, sf::RenderWindow& pWindow) : mMemory(pMemory), 
                     tileSecond = pVRAM[(pAddr & 0x1FFF)];
                 }
                 setTileLine(mTiles1, tileID, (uint8_t) (tileOffset / 2), tileFirst, tileSecond);
+
             } else if (pAddr >= 0x8800 && pAddr < 0x9000) {
                 //Tiles0 + Tiles1
+                tileID = (uint8_t) ((pAddr - 0x8800) / 16);
+                tileOffset = (uint8_t) ((pAddr - 0x8800) % 16);
+
+                if (tileOffset % 2 == 0) {
+                    tileFirst = pVRAM[(pAddr & 0x1FFF)];
+                    tileSecond = pVRAM[(pAddr & 0x1FFF) + 1];
+                } else {
+                    tileFirst = pVRAM[(pAddr & 0x1FFF) - 1];
+                    tileSecond = pVRAM[(pAddr & 0x1FFF)];
+                }
+                setTileLine(mTiles1, tileID + 128, (uint8_t) (tileOffset / 2), tileFirst, tileSecond);
+                setTileLine(mTiles0, tileID, (uint8_t) (tileOffset / 2), tileFirst, tileSecond);
+
             } else if (pAddr >= 0x9000 && pAddr < 0x9800) {
                 //only Tiles0
                 tileID = (uint8_t) ((pAddr - 0x9000) / 16);
@@ -80,7 +101,7 @@ GPU::GPU(MemoryManager& pMemory, sf::RenderWindow& pWindow) : mMemory(pMemory), 
 
 void GPU::setTileLine(uint8_t* pTileSet, uint16_t pTileID, uint8_t pLine, uint8_t pFirst, uint8_t pSecond) {
     for (int i = 0; i < 8; i++) {
-        uint8_t color = (uint8_t) (((pFirst >> (7 - i)) & 0x01) | ( ((pSecond >> (7 - i)) & 0x01) << 1)  );
+        uint8_t color = (uint8_t) (((pFirst >> (7 - i)) & 0x01) | (((pSecond >> (7 - i)) & 0x01) << 1));
 
         switch (color) {
             case 0x00:
@@ -211,6 +232,9 @@ void GPU::tick() {
 void GPU::draw() {
     mWindow.clear(sf::Color::White);
     auto bg = sf::Sprite(mBGTexture);
+
+    bg.setPosition(-mScrollX, -mScrollY);
+
     mWindow.draw(bg);
     mWindow.display();
     //TODO: Draw

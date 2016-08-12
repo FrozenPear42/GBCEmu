@@ -25,6 +25,10 @@ private:
 
     uint8_t mBGTiles[1024] = {0};
 
+    uint8_t mScrollX = 0;
+    uint8_t mScrollY = 0;
+
+
     sf::RenderWindow& mWindow;
     sf::Texture mBGTexture;
 public:

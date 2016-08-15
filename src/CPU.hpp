@@ -55,9 +55,10 @@ private:
         bool IME;
     } mMainRegisters;
 
+    std::array<std::function<uint8_t(void)>, 256> mOPTable;
+    uint8_t mWait = 0;
     uint8_t mJump = 0;
     uint8_t mHalt = 0;
-
 
     MemoryManager &mMemory;
 public:
@@ -66,7 +67,7 @@ public:
     void log();
 
 private:
-    void wait(uint8_t pCycles);
+    void initTables();
 };
 
 

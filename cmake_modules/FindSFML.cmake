@@ -78,6 +78,8 @@ find_path(SFML_INCLUDE_DIR SFML/Config.hpp
           PATH_SUFFIXES include
           PATHS ${FIND_SFML_PATHS})
 
+set(SFML_INCLUDE_DIR /usr/local/include)
+
 # check the version number
 set(SFML_VERSION_OK TRUE)
 if(SFML_FIND_VERSION AND SFML_INCLUDE_DIR)

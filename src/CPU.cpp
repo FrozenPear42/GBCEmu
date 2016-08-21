@@ -4,7 +4,6 @@
 
 #include "CPU.hpp"
 #include "Log.hpp"
-#include <iostream>
 
 CPU::CPU(MemoryManager &pMemory) : mMemory(pMemory) {
     initTables();
@@ -523,54 +522,38 @@ void CPU::initTables() {
     };
 
 /* DEC */
-#define DEC_R(reg) ( \
-            { \
+#define DEC_R_O(reg, clk) ( \
+            [&]{ \
             uint8_t el_a = reg; \
             uint8_t el_b = 1; \
             reg = el_a - el_b; \
             uint8_t zero = (uint8_t) (reg == 0 ? 1 : 0); \
             uint8_t half = (uint8_t) (((reg ^ el_a ^ el_b) & 0x10) >> 4); \
             mGPRegisters.F = FLAGS(zero, 1, F_CARRY(mGPRegisters.F), half); \
-    })
-    case 0x3D:
-        DEC_R(mGPRegisters.A);
-    break;
-    case 0x05:
-        DEC_R(mGPRegisters.B);
-    break;
-    case 0x0D:
-        DEC_R(mGPRegisters.C);
-    break;
-    case 0x15:
-        DEC_R(mGPRegisters.D);
-    break;
-    case 0x1D:
-        DEC_R(mGPRegisters.E);
-    break;
-    case 0x25:
-        DEC_R(mGPRegisters.H);
-    break;
-    case 0x2D:
-        DEC_R(mGPRegisters.L);
-    break;
-    case 0x35: {
+    return clk;\
+})
+    mOPTable[0x3D] = DEC_R_O(mGPRegisters.A, 4);
+    mOPTable[0x05] = DEC_R_O(mGPRegisters.B, 4);
+    mOPTable[0x3D] = DEC_R_O(mGPRegisters.C, 4);
+    mOPTable[0x15] = DEC_R_O(mGPRegisters.D, 4);
+    mOPTable[0x1D] = DEC_R_O(mGPRegisters.E, 4);
+    mOPTable[0x25] = DEC_R_O(mGPRegisters.H, 4);
+    mOPTable[0x2D] = DEC_R_O(mGPRegisters.L, 4);
+    mOPTable[0x35] = [&] {
         uint8_t el_a = mMemory.readByte(mGPRegisters.HL);
         uint8_t el_b = 1;
         uint8_t reg = el_a - el_b;
-        mMemory.
-                writeByte(mGPRegisters
-                                  .HL, reg);
+        mMemory.writeByte(mGPRegisters.HL, reg);
         uint8_t zero = (uint8_t) (reg == 0 ? 1 : 0);
         uint8_t half = (uint8_t) (((reg ^ el_a ^ el_b) & 0x10) >> 4);
-        mGPRegisters.
-                F = FLAGS(zero, 1, F_CARRY(mGPRegisters.F), half);
-    }
-    break;
+        mGPRegisters.F = FLAGS(zero, 1, F_CARRY(mGPRegisters.F), half);
+        return 12;
+    };
 
 /* 16-bit ALU */
 /* ADD */
-#define ADD_16_R(reg) ( \
-            {\
+#define ADD_16_R_O(reg, clk) ( \
+            [&]{\
             uint16_t el_a = mGPRegisters.HL;\
             uint16_t el_b = reg;\
             mGPRegisters.HL = el_a + el_b;\
@@ -578,63 +561,41 @@ void CPU::initTables() {
             uint8_t carry = (uint8_t) ((((uint32_t) el_a + (uint32_t) el_b) > 65535) ? 1 : 0);\
             uint8_t half = (uint8_t) (((mGPRegisters.HL ^ el_a ^ el_b) & 0x0400) >> 10);\
             mGPRegisters.F = FLAGS(zero, 0, carry, half);\
-            })
-    case 0x09:
-        ADD_16_R(mGPRegisters.BC);
-    break;
-    case 0x19:
-        ADD_16_R(mGPRegisters.DE);
-    break;
-    case 0x29:
-        ADD_16_R(mGPRegisters.HL);
-    break;
-    case 0x39:
-        ADD_16_R(mMainRegisters.SP);
-    break;
-/* ADD SP, n */
-    case 0xE8: {
+            return clk;\
+})
+    mOPTable[0x09] = ADD_16_R_O(mGPRegisters.BC, 8);
+    mOPTable[0x19] = ADD_16_R_O(mGPRegisters.DE, 8);
+    mOPTable[0x29] = ADD_16_R_O(mGPRegisters.HL, 8);
+    mOPTable[0x39] = ADD_16_R_O(mMainRegisters.SP, 8);
 
+/* ADD SP, n */
+    mOPTable[0xE8] = [&] {
         int el_a = mMainRegisters.SP;
         int n = (int) (mMemory.readByte(++mMainRegisters.PC));
-        mMainRegisters.
-                SP = (uint16_t) ((int) mMainRegisters.SP + n);
+        mMainRegisters.SP = (uint16_t) ((int) mMainRegisters.SP + n);
         uint8_t carry = (uint8_t) (((el_a + n) > 65535 || (el_a + n) < 0) ? 1
                                                                           : 0);
-        uint8_t half = (uint8_t) (((mMainRegisters.SP ^ el_a ^ n) & 0x0400) >>
-                                  10);
-        mGPRegisters.
-                F = FLAGS(0, 0, carry, half);
-    }
-    break;
+        uint8_t half = (uint8_t) (((mMainRegisters.SP ^ el_a ^ n) & 0x0400) >> 10);
+        mGPRegisters.F = FLAGS(0, 0, carry, half);
+        return 16;
+    };
 
-#define INC_16_R(reg) { reg++; }
+#define INC_16_R_O(reg, clk) [&]{ reg++; return clk; }
 
-    case 0x03: INC_16_R(mGPRegisters.BC);
-    break;
-    case 0x13: INC_16_R(mGPRegisters.DE);
-    break;
-    case 0x23: INC_16_R(mGPRegisters.HL);
-    break;
-    case 0x33: INC_16_R(mMainRegisters.SP);
-    break;
+    mOPTable[0x03] = INC_16_R_O(mGPRegisters.BC, 8);
+    mOPTable[0x13] = INC_16_R_O(mGPRegisters.DE, 8);
+    mOPTable[0x23] = INC_16_R_O(mGPRegisters.HL, 8);
+    mOPTable[0x33] = INC_16_R_O(mMainRegisters.SP, 8);
 
-#define DEC_16_R(reg) ({ reg--; })
+#define DEC_16_R_O(reg, clk) ([&]{ reg--; return clk; })
 
-    case 0x0B:
-        DEC_16_R(mGPRegisters.BC);
-    break;
-    case 0x1B:
-        DEC_16_R(mGPRegisters.DE);
-    break;
-    case 0x2B:
-        DEC_16_R(mGPRegisters.HL);
-    break;
-    case 0x3B:
-        DEC_16_R(mMainRegisters.SP);
-    break;
+    mOPTable[0x0B] = DEC_16_R_O(mGPRegisters.BC, 8);
+    mOPTable[0x1B] = DEC_16_R_O(mGPRegisters.DE, 8);
+    mOPTable[0x2B] = DEC_16_R_O(mGPRegisters.HL, 8);
+    mOPTable[0x3B] = DEC_16_R_O(mMainRegisters.SP, 8);
 
 /* DDA */
-    case 0x27: {
+    mOPTable[0x27] = [&] {
         uint8_t reg = mGPRegisters.A;
         if (F_HALF(mGPRegisters.F) || (reg & 0x0F) > 9)
             mGPRegisters.A += 6;
@@ -648,84 +609,75 @@ void CPU::initTables() {
         mGPRegisters.
                 F = FLAGS((mGPRegisters.A == 0 ? 1 : 0), F_SUB(mGPRegisters.F),
                           0, F_CARRY(mGPRegisters.F));
-    }
-    break;
-    case 0x2F:
-        mGPRegisters.
-                A = ~mGPRegisters.A;
-    mGPRegisters.
-            F = FLAGS(F_ZERO(mGPRegisters.F), 1, 1, F_CARRY(mGPRegisters.F));
-    break;
-    case 0x3F:
+        return 4;
+    };
+
+    mOPTable[0x2F] = [&] {
+        mGPRegisters.A = ~mGPRegisters.A;
+        mGPRegisters.F = FLAGS(F_ZERO(mGPRegisters.F), 1, 1, F_CARRY(mGPRegisters.F));
+        return 4;
+    };
+
+    mOPTable[0x3F] = [&] {
         if (F_CARRY(mGPRegisters.F))
-            mGPRegisters.
-                    F = FLAGS(F_ZERO(mGPRegisters.F), 0, 0, 0);
+            mGPRegisters.F = FLAGS(F_ZERO(mGPRegisters.F), 0, 0, 0);
         else
-            mGPRegisters.
-                    F = FLAGS(F_ZERO(mGPRegisters.F), 0, 0, 1);
+            mGPRegisters.F = FLAGS(F_ZERO(mGPRegisters.F), 0, 0, 1);
+        return 4;
+    };
 
-    break;
+    mOPTable[0x37] = [&] {
+        mGPRegisters.F = FLAGS(F_ZERO(mGPRegisters.F), 0, 0, 1);
+        return 4;
+    };
 
-    case 0x37:
-        mGPRegisters.
-                F = FLAGS(F_ZERO(mGPRegisters.F), 0, 0, 1);
-    break;
-
-    case 0x76:
+    mOPTable[0x76] = [&] {
         mHalt = 1;
-    break;
+        return 4;
+    };
 
-    case 0x10:
+    mOPTable[0x10] = [&] {
         if (mMemory.readByte(++mMainRegisters.PC) == 0x00) {
             mHalt = 1;
-//TODO: STOP
+            //TODO: STOP
         }
-    break;
+        return 4;
+    };
 
-    case 0xF3:
-        mMainRegisters.
-                IME = false;
-    break;
+    mOPTable[0xF3] = [&] {
+        mMainRegisters.IME = false;
+        return 4;
+    };
 
-    case 0xFB:
-        mMainRegisters.
-                IME = true;
-    break;
+    mOPTable[0xFB] = [&] {
+        mMainRegisters.IME = true;
+        return 4;
+    };
 
-
-#define JMP_R(cond) ({\
+#define JMP_R(cond, clk) ([&]{\
             if (cond) {\
                 mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);\
                 mJump = 1;\
             }else{\
                 ++mMainRegisters.PC;\
                 ++mMainRegisters.PC;\
-            }       \
-    })
+            }\
+    return clk;\
+})
 /* JMP */
-    case 0xC3:
-        JMP_R(true);
-    break;
-    case 0xC2:
-        JMP_R(!F_ZERO(mGPRegisters.F));
-    break;
-    case 0xCA:
-        JMP_R(F_ZERO(mGPRegisters.F));
-    break;
-    case 0xD2:
-        JMP_R(!F_CARRY(mGPRegisters.F));
-    break;
-    case 0xDA:
-        JMP_R(F_CARRY(mGPRegisters.F));
-    break;
-    case 0xE9:
-        mMainRegisters.
-                PC = mGPRegisters.HL;
-    mJump = 1;
-    break;
+    mOPTable[0xC3] = JMP_R(true, 12);
+    mOPTable[0xC2] = JMP_R(!F_ZERO(mGPRegisters.F), 12);
+    mOPTable[0xCA] = JMP_R(F_ZERO(mGPRegisters.F), 12);
+    mOPTable[0xD2] = JMP_R(!F_CARRY(mGPRegisters.F), 12);
+    mOPTable[0xDA] = JMP_R(F_CARRY(mGPRegisters.F), 12);
+    mOPTable[0xE9] = [&] {
+        mMainRegisters.PC = mGPRegisters.HL;
+        mJump = 1;
+        return 4;
+    };
 
 /* JR */
-#define JR_R(cond)({\
+#define JR_R(cond, clk)([&]{\
             if(cond){\
                 int8_t offset = (int8_t) mMemory.readByte(++mMainRegisters.PC);\
                 mMainRegisters.PC = (uint16_t) ((int16_t) mMainRegisters.PC + offset);\
@@ -734,55 +686,33 @@ void CPU::initTables() {
             } else {\
                 ++mMainRegisters.PC;\
             }\
+            return clk;\
             })
 
-    case 0x18: {
-        JR_R(true);
-    }
-    break;
-    case 0x20:
-        JR_R(!F_ZERO(mGPRegisters.F));
-    break;
-    case 0x28:
-        JR_R(F_ZERO(mGPRegisters.F));
-    break;
-    case 0x30:
-        JR_R(!F_CARRY(mGPRegisters.F));
-    break;
-    case 0x38:
-        JR_R(F_CARRY(mGPRegisters.F));
-    break;
+    mOPTable[0x18] = JR_R(true, 4);
+    mOPTable[0x20] = JR_R(!F_ZERO(mGPRegisters.F), 4);
+    mOPTable[0x28] = JR_R(F_ZERO(mGPRegisters.F), 4);
+    mOPTable[0x30] = JR_R(!F_CARRY(mGPRegisters.F), 4);
+    mOPTable[0x38] = JR_R(F_CARRY(mGPRegisters.F), 4);
 
-#define CALL_R(cond) ({\
+#define CALL_R(cond, clk) ([&]{\
             uint16_t next = (uint16_t) (mMainRegisters.PC + 3);\
             mMemory.writeByte(--mMainRegisters.SP, (uint8_t) ((next & 0xFF00) >> 8));\
             mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (next & 0x00FF));\
             mMainRegisters.PC = mMemory.readWordLS(++mMainRegisters.PC);\
             mJump = 1;\
+            return clk;\
             })
 
 /* CALL */
-    case 0xCD:
-        CALL_R(true);
-    break;
+    mOPTable[0xCD] = CALL_R(true, 4);
+    mOPTable[0xC4] = CALL_R(!F_ZERO(mGPRegisters.F), 4);
+    mOPTable[0xCC] = CALL_R(F_ZERO(mGPRegisters.F), 4);
+    mOPTable[0xD4] = CALL_R(!F_CARRY(mGPRegisters.F), 4);
+    mOPTable[0xDC] = CALL_R(F_CARRY(mGPRegisters.F), 4);
 
-    case 0xC4:
-        CALL_R(!F_ZERO(mGPRegisters.F));
-    break;
 
-    case 0xCC:
-        CALL_R(F_ZERO(mGPRegisters.F));
-    break;
-
-    case 0xD4:
-        CALL_R(!F_CARRY(mGPRegisters.F));
-    break;
-
-    case 0xDC:
-        CALL_R(F_CARRY(mGPRegisters.F));
-    break;
-
-#define RET_R(cond) ({\
+#define RET_R(cond, clk) ([&]{\
             if(cond) {\
                 uint16_t next;\
             next = mMemory.readByte(mMainRegisters.SP++);\
@@ -790,63 +720,40 @@ void CPU::initTables() {
             mMainRegisters.PC = next;\
             mJump = 1;\
             }\
+            return clk;\
     })
 
 /* RET */
-    case 0xC9:
-        RET_R(true);
-    break;
-/* RETI */
-    case 0xD9:
-        RET_R(true);
-    mMainRegisters.
-            IME = true;
-    break;
+    mOPTable[0xC9] = RET_R(true, 4);
 
-    case 0xC0:
-        RET_R(!F_ZERO(mGPRegisters.F));
-    break;
-    case 0xC8:
-        RET_R(F_ZERO(mGPRegisters.F));
-    break;
-    case 0xD0:
-        RET_R(!F_CARRY(mGPRegisters.F));
-    break;
-    case 0xD8:
-        RET_R(F_CARRY(mGPRegisters.F));
-    break;
+/* RETI */
+    mOPTable[0xD9] = [&] {
+        mMainRegisters.IME = true;
+        return RET_R(true, 4)();
+    };
+    mOPTable[0xC0] = RET_R(!F_ZERO(mGPRegisters.F), 4);
+    mOPTable[0xC8] = RET_R(F_ZERO(mGPRegisters.F), 4);
+    mOPTable[0xD0] = RET_R(!F_CARRY(mGPRegisters.F), 4);
+    mOPTable[0xD8] = RET_R(F_CARRY(mGPRegisters.F), 4);
+
 
 /* RST */
-#define RST(addr) ({\
+#define RST(addr, clk) ([&]{\
             mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (mMainRegisters.PC & 0xFF00 >> 8));\
             mMemory.writeByte(--mMainRegisters.SP, (uint8_t) (mMainRegisters.PC & 0x00FF));\
             mMainRegisters.PC = addr;\
             mJump = 1;\
+            return clk;\
     })
-    case 0xC7:
-        RST(0x0000);
-    break;
-    case 0xCF:
-        RST(0x0008);
-    break;
-    case 0xD7:
-        RST(0x0010);
-    break;
-    case 0xDF:
-        RST(0x0018);
-    break;
-    case 0xE7:
-        RST(0x0020);
-    break;
-    case 0xEF:
-        RST(0x0028);
-    break;
-    case 0xF7:
-        RST(0x0030);
-    break;
-    case 0xFF:
-        RST(0x0038);
-    break;
+    mOPTable[0xC7] = RST(0x0000, 4);
+    mOPTable[0xCF] = RST(0x0008, 4);
+    mOPTable[0xD7] = RST(0x0010, 4);
+    mOPTable[0xDF] = RST(0x0018, 4);
+    mOPTable[0xE7] = RST(0x0020, 4);
+    mOPTable[0xEF] = RST(0x0028, 4);
+    mOPTable[0xF7] = RST(0x0030, 4);
+    mOPTable[0xFF] = RST(0x0038, 4);
+
 
 #define RLC_R(reg) ({\
             uint8_t c = (uint8_t) (((reg) & 0x80) >> 7);\
@@ -909,23 +816,24 @@ void CPU::initTables() {
     })
 
 /* ROTATIONS */
-    case 0x07:
+    mOPTable[0x07] = [&] {
         RLC_R(mGPRegisters.A);
-    break;
+        return 4;
+    };
 
-    case 0x17:
+    mOPTable[0x17] = [&] {
         RL_R(mGPRegisters.A);
-    break;
-
-    case 0x0F:
+        return 4;
+    };
+    mOPTable[0x0F] = [&] {
         RRC_R(mGPRegisters.A);
-    break;
-
-    case 0x1F:
+        return 4;
+    };
+    mOPTable[0x1F] = [&] {
         RR_R(mGPRegisters.A);
-    break;
-
-
+        return 4;
+    };
+    //TODO: add 0xCB OP table
     mOPTable[0xCB] = [&] {
         uint8_t bitOP = mMemory.readByte(++mMainRegisters.PC);
         uint8_t hl = mMemory.readByte(mGPRegisters.HL);
@@ -968,7 +876,7 @@ void CPU::initTables() {
                 throw "Unsuppeorted bit code";
         }
 
-        switch (OPCode & 0xF8) {
+        switch (bitOP & 0xF8) {
             case 0x00:
                 RLC_R(*target);
                 break;
@@ -1073,6 +981,7 @@ void CPU::initTables() {
 
         }
         mMemory.writeByte(mGPRegisters.HL, hl);
+        return 4;
     };
 
 }
